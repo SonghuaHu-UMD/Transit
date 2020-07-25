@@ -23,7 +23,7 @@ def convert_wgs_to_utm(lon, lat):
     return epsg_code
 
 
-os.chdir(r'C:\Users\Songhua Hu\Desktop\Transit\GIS')
+os.chdir(r'D:\Transit\GIS')
 
 # Read station
 Station = gpd.read_file('StationRidership.shp')
@@ -50,8 +50,19 @@ SInBG = gpd.sjoin(Station, BlockGroup, how='inner', op='within').reset_index(dro
 # Read ZIPCODE
 ZIPCODE = gpd.read_file(r'ZIPCODEUS.shp')
 ZIPCODE = ZIPCODE.to_crs('EPSG:' + str(utm_code))
-# SJOIN with BlockGroup
+# SJOIN with ZIPCODE
 SInZIP = gpd.sjoin(Station, ZIPCODE, how='inner', op='within').reset_index(drop=True)
+# Get the number of cases
+Num_Cases = pd.read_csv(r'D:\Transit\COVID-19_Cases__Tests__and_Deaths_by_ZIP_Code (1).csv')
+Num_Cases['Week Start'] = pd.to_datetime(Num_Cases['Week Start'])
+Num_Cases['Week End'] = pd.to_datetime(Num_Cases['Week End'])
+Num_Cases = Num_Cases.sort_values(by=['ZIP Code', 'Week Start']).reset_index(drop=True)
+Num_Cases['Diff_Start'] = (Num_Cases['Week Start'] - datetime.datetime(2020, 4, 30)).dt.days
+# Find the max negative
+Num_Cases_Neg = Num_Cases[Num_Cases['Diff_Start'] <= 0]
+Num_Cases_Cum = Num_Cases_Neg.groupby(['ZIP Code']).tail(1)
+Num_Cases_Cum = Num_Cases_Cum[['ZIP Code', 'Cases - Cumulative']]
+Num_Cases_Cum.columns = ['ZIP_CODE', 'Cumu_Cases']
 
 # Read Landuse
 Landuse = gpd.read_file(r'Landuse2013_CMAP.shp')
@@ -103,11 +114,13 @@ Road_Length_With_Type = SInRoad_Length.pivot('station_id', 'fclass', 'Length').f
 SInRoad_Length.groupby(['fclass']).sum()['Length'].plot.bar()
 
 # SInRoad1.to_file('SInRoad_overlay.shp')
-Road_Length_With_Type['Primary'] = Road_Length_With_Type['primary'] + Road_Length_With_Type['primary_link'] + \
+Road_Length_With_Type['Primary'] = Road_Length_With_Type['motorway'] + Road_Length_With_Type['motorway_link'] + \
+                                   Road_Length_With_Type['trunk'] + Road_Length_With_Type['trunk_link'] + \
+                                   Road_Length_With_Type['primary'] + Road_Length_With_Type['primary_link'] + \
                                    Road_Length_With_Type['tertiary'] + Road_Length_With_Type['tertiary_link']
 Road_Length_With_Type['Secondary'] = Road_Length_With_Type['secondary'] + Road_Length_With_Type['secondary_link'] + \
-                                     Road_Length_With_Type['residential']
+                                     Road_Length_With_Type['residential'] + Road_Length_With_Type['tertiary']
 Road_Length_With_Type['Minor'] = Road_Length_With_Type['service'] + Road_Length_With_Type['steps'] + \
-                                 Road_Length_With_Type['track'] + Road_Length_With_Type['track_grade3']
+                                 Road_Length_With_Type['track'] + Road_Length_With_Type['living_street']
 Road_Length_With_Type['All_Road_Length'] = Road_Length_With_Type.iloc[:, 1:-3].sum(axis=1)
-Road_Length_With_Type = Road_Length_With_Type[['TAZ', 'Primary', 'Secondary', 'Minor', 'All_Road_Length']]
+Road_Length_With_Type = Road_Length_With_Type[['station_id', 'Primary', 'Secondary', 'Minor', 'All_Road_Length']]
