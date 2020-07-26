@@ -6,7 +6,7 @@ import matplotlib.pylab as plt
 from scipy import stats
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
-os.chdir(r'C:\Users\Songhua Hu\Desktop\Transit')
+os.chdir(r'D:\Transit')
 
 
 def haversine_array(lat1, lng1, lat2, lng2):

@@ -6,6 +6,7 @@ import pyproj
 import numpy as np
 import datetime
 import math
+from functools import reduce
 
 pyproj.__version__  # (2.6.0)
 gpd.__version__
@@ -25,6 +26,8 @@ def convert_wgs_to_utm(lon, lat):
 
 os.chdir(r'D:\Transit\GIS')
 
+Buffer_V = 1000
+
 # Read station
 Station = gpd.read_file('StationRidership.shp')
 # Get the utm code
@@ -33,25 +36,87 @@ utm_code = convert_wgs_to_utm(Station.geometry.bounds['minx'][0], Station.geomet
 Station = Station.to_crs('EPSG:' + str(utm_code))
 
 # Buffer the station
-Buffer_S = Station.buffer(1000, cap_style=1).reset_index(drop=True).reset_index()
+Buffer_S = Station.buffer(Buffer_V, cap_style=1).reset_index(drop=True).reset_index()
 Buffer_S.columns = ['B_ID', 'geometry']
 Buffer_S = gpd.GeoDataFrame(Buffer_S, geometry='geometry', crs='EPSG:4326')
 Buffer_S = Buffer_S.to_crs('EPSG:' + str(utm_code))
 Buffer_S['station_id'] = Station['station_id']
 # Buffer_S.to_file('TransitBuffer.shp')
 
+## Socio calculation
 # Read BlockGroup
 BlockGroup = gpd.read_file(r'BlockGroup.shp')
 BlockGroup = BlockGroup.to_crs('EPSG:' + str(utm_code))
+# BlockGroup['ALAND'] = BlockGroup['ALAND'] * 3.86102e-7  # to sq. miles
+BlockGroup['AREA'] = BlockGroup.geometry.area * 3.86102e-7  # to sq. miles
+# plt.plot(BlockGroup['ALAND'],BlockGroup['AREA'])
 # SJOIN with BlockGroup
 SInBG = gpd.sjoin(Station, BlockGroup, how='inner', op='within').reset_index(drop=True)
+SInBG_index = SInBG[['GEOID', 'station_id', 'AREA']]
 # DF_SInBG = pd.DataFrame(SInBG)
+# Read socio-demogra
+Socid_Raw = pd.read_csv(
+    r'D:\COVID-19\RNN_COVID_Data\Social Demography\nhgis0021_csv\nhgis0021_ds239_20185_2018_blck_grp.csv',
+    encoding='gbk')
+Socid_Raw['GEOID'] = Socid_Raw['GISJOIN'].str[1:3] + Socid_Raw['GISJOIN'].str[4:7] + Socid_Raw['GISJOIN'].str[8:15]
+Socid_Raw = Socid_Raw.merge(SInBG_index, on='GEOID')
+
+# Gender
+Socid_Raw['Male'] = Socid_Raw['AJWBE002']
+# Age
+Socid_Raw['Total_Population'] = Socid_Raw['AJWBE001']
+# Socid_Raw['PopDensity'] =
+Socid_Raw['Age_0_24'] = \
+    sum(Socid_Raw[col] for col in
+        ['AJWBE%03d' % num for num in range(3, 11)] + ['AJWBE%03d' % num for num in range(27, 35)])
+Socid_Raw['Age_25_40'] = \
+    sum(Socid_Raw[col] for col in
+        ['AJWBE%03d' % num for num in range(11, 14)] + ['AJWBE%03d' % num for num in range(35, 38)])
+Socid_Raw['Age_40_65'] = \
+    sum(Socid_Raw[col] for col in
+        ['AJWBE%03d' % num for num in range(14, 20)] + ['AJWBE%03d' % num for num in range(38, 44)])
+Socid_Raw['Age_65_'] = \
+    sum(Socid_Raw[col] for col in
+        ['AJWBE%03d' % num for num in range(20, 26)] + ['AJWBE%03d' % num for num in range(44, 50)])
+# Race
+Socid_Raw['White'] = Socid_Raw['AJWNE002']
+Socid_Raw['Black'] = Socid_Raw['AJWNE003']
+Socid_Raw['Indian'] = Socid_Raw['AJWNE004']
+Socid_Raw['Asian'] = Socid_Raw['AJWNE005']
+# Percentage
+for each in ['Male', 'Age_0_24', 'Age_25_40', 'Age_40_65', 'Age_65_', 'White', 'Black', 'Indian', 'Asian']:
+    Socid_Raw['Pct.' + each] = Socid_Raw[each] / Socid_Raw['Total_Population']
+# Employment
+Socid_Raw['LaborForce'] = Socid_Raw['AJ1CE002']
+Socid_Raw['Unemployed'] = Socid_Raw['AJ1CE005']
+Socid_Raw['Employed'] = Socid_Raw['AJ1CE004']
+Socid_Raw['Pct.Unemploy'] = Socid_Raw['Unemployed'] / Socid_Raw['LaborForce']
+# Income
+Socid_Raw['Income'] = Socid_Raw["AJZAE001"]
+# Travel infomation
+Socid_Raw['Pct.Car'] = Socid_Raw['AJXCE002'] / Socid_Raw['AJXCE001']
+Socid_Raw['Pct.Transit'] = Socid_Raw['AJXCE010'] / Socid_Raw['AJXCE001']
+Socid_Raw['Pct.WorkHome'] = Socid_Raw['AJXCE021'] / Socid_Raw['AJXCE001']
+# Education
+Socid_Raw['College'] = (Socid_Raw['AJYPE022'] + Socid_Raw['AJYPE023'] + Socid_Raw['AJYPE024'] + Socid_Raw['AJYPE025']) / \
+                       Socid_Raw['AJYPE001']
+# Need
+Socid_Raw = Socid_Raw[
+    ['Pct.Male', 'Pct.Age_0_24', 'Pct.Age_25_40', 'Pct.Age_40_65', 'Pct.White', 'Pct.Black', 'Pct.Indian', 'Pct.Asian',
+     'Pct.Unemploy', 'Total_Population', 'GEOID', 'Income', 'Employed', 'College', 'Pct.Car', 'Pct.Transit',
+     'Pct.WorkHome', 'AREA', 'station_id']]
+# fill na: 40890 40930
+Socid_Raw.loc[Socid_Raw['station_id'].isin([40890, 40930]), 'Total_Population'] = np.nan
+Socid_Raw.loc[Socid_Raw['station_id'].isin([40890, 40930]), 'Employed'] = np.nan
+Socid_Raw_Final = Socid_Raw.fillna(Socid_Raw.mean())
 
 # Read ZIPCODE
 ZIPCODE = gpd.read_file(r'ZIPCODEUS.shp')
 ZIPCODE = ZIPCODE.to_crs('EPSG:' + str(utm_code))
 # SJOIN with ZIPCODE
 SInZIP = gpd.sjoin(Station, ZIPCODE, how='inner', op='within').reset_index(drop=True)
+# Et the ZCODE
+StationZIP = pd.DataFrame(SInZIP[['station_id', 'ZIP_CODE']])
 # Get the number of cases
 Num_Cases = pd.read_csv(r'D:\Transit\COVID-19_Cases__Tests__and_Deaths_by_ZIP_Code (1).csv')
 Num_Cases['Week Start'] = pd.to_datetime(Num_Cases['Week Start'])
@@ -63,6 +128,8 @@ Num_Cases_Neg = Num_Cases[Num_Cases['Diff_Start'] <= 0]
 Num_Cases_Cum = Num_Cases_Neg.groupby(['ZIP Code']).tail(1)
 Num_Cases_Cum = Num_Cases_Cum[['ZIP Code', 'Cases - Cumulative']]
 Num_Cases_Cum.columns = ['ZIP_CODE', 'Cumu_Cases']
+StationZIP = StationZIP.merge(Num_Cases_Cum, on='ZIP_CODE', how='left')
+StationZIP = StationZIP.fillna(0)
 
 # Read Landuse
 Landuse = gpd.read_file(r'Landuse2013_CMAP.shp')
@@ -99,7 +166,7 @@ LandUse_Area2 = LandUse_Area2.merge(LandUse_Area3, on='station_id')
 LandUse_Area2['LUM'] = LandUse_Area2['LogP*P'] * ((-1) / (np.log(LandUse_Area2['Count'])))
 LUM = LandUse_Area2[['station_id', 'LUM']].fillna(0)
 LandUse_Area_PCT = LandUse_Area1[['station_id', 'Land_Use_Des', 'Area', 'Percen']]
-# plt.hist(LUM['LUM'])
+LandUse_Area_PCT_Final = LandUse_Area_PCT.pivot('station_id', 'Land_Use_Des', 'Percen').fillna(0).reset_index()
 
 # Read roads
 Roads = gpd.read_file(r'ROAD.shp')
@@ -124,3 +191,40 @@ Road_Length_With_Type['Minor'] = Road_Length_With_Type['service'] + Road_Length_
                                  Road_Length_With_Type['track'] + Road_Length_With_Type['living_street']
 Road_Length_With_Type['All_Road_Length'] = Road_Length_With_Type.iloc[:, 1:-3].sum(axis=1)
 Road_Length_With_Type = Road_Length_With_Type[['station_id', 'Primary', 'Secondary', 'Minor', 'All_Road_Length']]
+# Calculate density
+Road_Length_With_Type['Primary'] = (Road_Length_With_Type['Primary'] * 0.000621371) / (
+        3.1415926 * (Buffer_V * 0.000621371) * (Buffer_V * 0.000621371))
+Road_Length_With_Type['Secondary'] = (Road_Length_With_Type['Secondary'] * 0.000621371) / (
+        3.1415926 * (Buffer_V * 0.000621371) * (Buffer_V * 0.000621371))
+Road_Length_With_Type['Minor'] = (Road_Length_With_Type['Minor'] * 0.000621371) / (
+        3.1415926 * (Buffer_V * 0.000621371) * (Buffer_V * 0.000621371))
+Road_Length_With_Type['All_Road_Length'] = (Road_Length_With_Type['All_Road_Length'] * 0.000621371) / (
+        3.1415926 * (Buffer_V * 0.000621371) * (Buffer_V * 0.000621371))
+
+# Merge all data
+dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final]
+All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
+All_final.isnull().sum()
+All_final.describe().T
+
+# Change unit
+All_final['PopDensity'] = (All_final['Total_Population'] / 1e3) / All_final['AREA']
+All_final['Income'] = All_final['Income'] / 1e3
+All_final['EmployDensity'] = (All_final['Employed'] / 1e3) / All_final['AREA']
+
+# Output
+All_final.to_csv('Features_Transit.csv')
+
+# Merge with Transit and others
+import pandas as pd
+import os
+from functools import reduce
+
+os.chdir(r'D:\Transit')
+Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
+Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
+Features = pd.read_csv(r'Features_Transit.csv', index_col=0)
+dfs = [Ride_C, Impact_C, Features]
+All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
+
+
