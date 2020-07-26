@@ -150,6 +150,7 @@ SInLand_Area.loc[SInLand_Area['Land_Use_F2'] == '14', 'Land_Use_Des'] = 'INDUSTR
 SInLand_Area.loc[SInLand_Area['Land_Use_F2'] == '15', 'Land_Use_Des'] = 'TCUW'
 SInLand_Area.loc[SInLand_Area['Land_Use_F1'] == '3', 'Land_Use_Des'] = 'OPENSPACE'
 SInLand_Area.loc[SInLand_Area['Land_Use_F1'].isin(['2', '4', '5', '6', '9']), 'Land_Use_Des'] = 'OTHERS'
+SInLand_Area.loc[SInLand_Area['Land_Use_Des'] == 'TCUW', 'Land_Use_Des'] = 'OTHERS'
 SInLand_Area_New = SInLand_Area.groupby(['station_id', 'Land_Use_Des']).sum()['Area'].reset_index()
 
 # Calculate the LUM
@@ -164,7 +165,7 @@ LandUse_Area3 = SInLand_Area_New.groupby(['station_id']).count()['Land_Use_Des']
 LandUse_Area3.columns = ['station_id', 'Count']
 LandUse_Area2 = LandUse_Area2.merge(LandUse_Area3, on='station_id')
 LandUse_Area2['LUM'] = LandUse_Area2['LogP*P'] * ((-1) / (np.log(LandUse_Area2['Count'])))
-LUM = LandUse_Area2[['station_id', 'LUM']].fillna(0)
+LUM = LandUse_Area2[['station_id', 'LUM']].fillna(LandUse_Area2.mean())
 LandUse_Area_PCT = LandUse_Area1[['station_id', 'Land_Use_Des', 'Area', 'Percen']]
 LandUse_Area_PCT_Final = LandUse_Area_PCT.pivot('station_id', 'Land_Use_Des', 'Percen').fillna(0).reset_index()
 
@@ -206,6 +207,7 @@ dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final.isnull().sum()
 All_final.describe().T
+plt.plot(All_final['LUM'])
 
 # Change unit
 All_final['PopDensity'] = (All_final['Total_Population'] / 1e3) / All_final['AREA']
@@ -231,7 +233,7 @@ dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final['Relative_Impact'] = -All_final['Relative_Impact']
 All_final.describe().T
-All_final.to_csv('All_final_Transit_R.csv')
+All_final.to_csv('All_final_Transit_R1.csv')
 
 # sns.pairplot(All_final)
 sns.heatmap(All_final.corr(), cmap=sns.diverging_palette(220, 10, as_cmap=True),
