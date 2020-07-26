@@ -229,9 +229,11 @@ Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
 Features = pd.read_csv(r'Features_Transit.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
-All_final.describe().T
-# sns.pairplot(All_final)
 All_final['Relative_Impact'] = -All_final['Relative_Impact']
+All_final.describe().T
+All_final.to_csv('All_final_Transit_R.csv')
+
+# sns.pairplot(All_final)
 sns.heatmap(All_final.corr(), cmap=sns.diverging_palette(220, 10, as_cmap=True),
             square=True, annot=False, xticklabels=True, yticklabels=True)
 plt.tight_layout()
