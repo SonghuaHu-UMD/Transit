@@ -96,6 +96,7 @@ finalMatrix <-
     #plot(bsts.model1, "coef")
     components.withreg$CTNAME <- eachstation
     components.withreg
+    #write.csv(components.withreg, 'finalMatrix_Transit_temp.csv')
   }
 stopCluster(cl)
 write.csv(finalMatrix, 'finalMatrix_Transit_0806.csv')
