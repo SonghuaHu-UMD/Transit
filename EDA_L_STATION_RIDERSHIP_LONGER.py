@@ -35,55 +35,9 @@ Daily_Lstaion = Daily_Lstaion[
 print(len(set(Daily_Lstaion['station_id'])))
 
 # Range the date
-max(Daily_Lstaion['date'])
-Date_Range = pd.DataFrame(
-    {'date': list(pd.date_range('2015-01-01', '2020-04-30', freq='D')) * len(set(Daily_Lstaion['station_id'])),
-     'station_id': np.repeat(list(set(Daily_Lstaion['station_id'])),
-                             len(list(pd.date_range('2015-01-01', '2020-04-30', freq='D'))))})
-Daily_Lstaion = Daily_Lstaion.merge(Date_Range, on=['station_id', 'date'], how='right')
+Daily_Lstaion = Daily_Lstaion.set_index('date').groupby(['station_id']).resample('d')[
+    ['rides', 'daytype']].asfreq().reset_index()
 Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date'])
-
-# Check NaN and outliers using Z-score
-# Some Data cannot be used
-Daily_Lstaion['Year'] = Daily_Lstaion.date.dt.year
-Daily_Lstaion = Daily_Lstaion.drop(
-    Daily_Lstaion[(Daily_Lstaion['station_id'].isin([40140, 40460, 40660, 40710, 40800, 41680, 40140, 41690])) &
-                  (Daily_Lstaion['Year'] == 2015)].index).reset_index(drop=True)
-Daily_Lstaion = Daily_Lstaion.drop(
-    Daily_Lstaion[(Daily_Lstaion['station_id'].isin([41700])) & (Daily_Lstaion['Year'] <= 2017)].index).reset_index(
-    drop=True)
-
-zscore = lambda x: abs((x - x.mean()) / x.std())
-Daily_Lstaion['zscore'] = Daily_Lstaion.groupby(['station_id'])['rides'].transform(zscore)
-Daily_Lstaion['Shift7'] = Daily_Lstaion.groupby(['station_id'])['rides'].shift(7)
-Daily_Lstaion['Raw_Rides'] = Daily_Lstaion['rides']
-Daily_Lstaion.loc[Daily_Lstaion['zscore'] > 2.5, 'rides'] = Daily_Lstaion.loc[Daily_Lstaion['zscore'] > 2.5, 'Shift7']
-Daily_Lstaion.isnull().sum()
-Daily_Lstaion = Daily_Lstaion.drop(['Shift7'], axis=1)
-Daily_Lstaion = Daily_Lstaion.dropna().reset_index(drop=True)
-
-'''
-# Plot the figure for each station
-the_zscore = 2.5
-Daily_Lstaion_DE = Daily_Lstaion[Daily_Lstaion['Year'] != 2020].reset_index(drop=True)
-for jj in list(set(Daily_Lstaion['station_id'])):
-    tem = Daily_Lstaion[Daily_Lstaion['station_id'] == jj]
-    # Find
-    fig, ax = plt.subplots(figsize=(10, 5), nrows=2, ncols=1)
-    ax[0].plot(tem['date'], tem['rides'], color='k')
-    ax[1].plot(tem['date'], tem['Raw_Rides'], color='k')
-    plt.tight_layout()
-    plt.savefig(str(jj) + '.png')
-    plt.close()
-'''
-
-# Find NAN
-NA_Count = Daily_Lstaion.groupby(['station_id', 'Year']).count().reset_index()
-# plt.plot(NA_Count['stationname'], 'o')
-# Find 0
-Daily_Lstaion['Is_Zero'] = Daily_Lstaion['rides'] == 0
-Zero_Count = Daily_Lstaion.groupby(['station_id', 'Year'])['Is_Zero'].sum().reset_index()
-plt.plot(Zero_Count['Is_Zero'], 'o')
 
 # Merge with weather and holidays
 # W=Weekday, A=Saturday, U=Sunday/Holiday
@@ -125,9 +79,9 @@ Need_Weather = set(Need_Weather)
 
 ## ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/
 ALL_WEATHER = pd.DataFrame()
-for eachyear in [2015, 2016, 2017, 2018, 2019, 2020]:
+for eachyear in range(2001, 2021):
     print(eachyear)
-    Weather_raw = pd.read_csv('Weather\\' + str(eachyear) + '.csv', header=None)
+    Weather_raw = pd.read_csv('Weather\\' + str(eachyear) + '.csv.gz', header=None, compression='gzip')
     Weather_raw = Weather_raw.loc[:, 0:3]
     Weather_raw.columns = ['Sid', 'date', 'Type', 'Number']
     Weather_raw = Weather_raw[Weather_raw['Sid'].isin(Need_Weather)]
@@ -144,7 +98,7 @@ for eachyear in [2015, 2016, 2017, 2018, 2019, 2020]:
         Station_raw['Distance'] = haversine_array(Station_raw['Ref_Lat'], Station_raw['Ref_Lng'], Station_raw['LAT'],
                                                   Station_raw['LON'])
         # sns.distplot(Station_raw['Distance'])
-        tem_id = Station_raw[Station_raw['Distance'] < 15]['Sid']
+        tem_id = Station_raw[Station_raw['Distance'] < 20]['Sid']
         tem_weather_PRCP = PV_Weather[PV_Weather['Sid'].isin(tem_id)].groupby('date').mean()['PRCP'].reset_index()
         tem_id = Station_raw[Station_raw['Distance'] < 30]['Sid']
         tem_weather_T = PV_Weather[PV_Weather['Sid'].isin(tem_id)].groupby('date').mean()[
@@ -158,6 +112,7 @@ for eachyear in [2015, 2016, 2017, 2018, 2019, 2020]:
 ALL_WEATHER.isnull().sum()
 ALL_WEATHER['TMAX'] = ALL_WEATHER['TMAX'].fillna(method='ffill').fillna(method='bfill')
 ALL_WEATHER['TMIN'] = ALL_WEATHER['TMIN'].fillna(method='ffill').fillna(method='bfill')
+ALL_WEATHER['PRCP'] = ALL_WEATHER['PRCP'].fillna(0)
 # ALL_WEATHER = ALL_WEATHER.groupby('station_id')[['TMAX', 'TMIN', 'PRCP']].fillna(method='ffill').fillna(method='bfill')
 # Change to mm and C
 ALL_WEATHER['TMAX'] = ALL_WEATHER['TMAX'] * 0.1
@@ -165,15 +120,17 @@ ALL_WEATHER['TMIN'] = ALL_WEATHER['TMIN'] * 0.1
 ALL_WEATHER['PRCP'] = ALL_WEATHER['PRCP'] * 0.1
 # plt.plot(ALL_WEATHER['TMIN'], 'ok', alpha=0.2)
 # plt.plot(All_Weather['PRCP'], 'ok', alpha=0.2)
-ALL_WEATHER.to_csv('All_Weather_2015_2020.csv')
+ALL_WEATHER.to_csv('All_Weather_2001_2020.csv')
 ALL_WEATHER['date'] = pd.to_datetime(ALL_WEATHER['date'], format='%Y%m%d')
+
 # Merge with weather
 Daily_Lstaion_Final = Daily_Lstaion.merge(ALL_WEATHER, on=['station_id', 'date'], how='left')
+Daily_Lstaion_Final = Daily_Lstaion_Final.fillna(0)
 Daily_Lstaion_Final.isnull().sum()
 
-Daily_Lstaion_Final[['station_id', 'stationname', 'date', 'daytype', 'rides', 'Year',
-                     'Raw_Rides', 'Week', 'IsWeekend', 'Holidays', 'PRCP', 'TMAX', 'TMIN']].to_csv(
-    'Daily_Lstaion_Final.csv', index=False)
+Daily_Lstaion_Final[['station_id', 'date', 'daytype', 'rides',
+                     'Week', 'IsWeekend', 'Holidays', 'PRCP', 'TMAX', 'TMIN']].to_csv(
+    'Daily_Lstaion_Final_0806.csv', index=False)
 
 Count_sta = Daily_Lstaion_Final[Daily_Lstaion_Final['Year'] == 2019].groupby(['station_id']).mean()[
     ['rides']].reset_index()

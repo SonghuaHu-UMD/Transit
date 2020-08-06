@@ -10,9 +10,10 @@ library(spdep)
 library(sf)
 library(tmap)
 library(scales)
+library(reshape2)
 
 dat <-
-  read.csv('C:/Users/hsonghua/Desktop/CausualImpact/Daily_Lstaion_Final.csv')
+  read.csv('D:\\Transit\\Daily_Lstaion_Final_0806.csv')
 dat$date <- as.Date(dat$date)
 AllCounty <- unique(dat$station_id)
 
@@ -30,16 +31,13 @@ finalMatrix <-
     .combine = rbind,
     .packages = c("CausalImpact")
   ) %dopar%
-  {
+    {
     eachstation <- AllCounty[ccount]
-    # eachstation <- 36061
-    print (ccount)
+    print(ccount)
     dat_Each <- dat[dat$station_id == eachstation,]
     rownames(dat_Each) <- NULL
-    # Sometimes there is no stay-at-home
-    # We only consider the days before the reopen guidelines
-    first_enforce_day <- as.numeric(rownames(dat_Each[dat_Each$date==as.Date('2020-03-02'),]))
-    pre.period <- c(1, first_enforce_day - 1)  
+    first_enforce_day <- as.numeric(rownames(dat_Each[dat_Each$date == as.Date('2020-03-02'),]))
+    pre.period <- c(1, first_enforce_day - 1)
     post.period <- c(first_enforce_day, nrow(dat_Each))
     # We keep a copy of the actual observed response in "post.period.response
     post.period.response <- dat_Each$rides[post.period[1]:post.period[2]]
@@ -51,90 +49,53 @@ finalMatrix <-
     ss <- AddSeasonal(ss, response, nseasons = 7)
     ss <- AddMonthlyAnnualCycle(ss, response)
     bsts.model1 <- bsts(
-      response ~ PRCP + TMAX + IsWeekend + Holidays, 
+      response ~ PRCP + TMAX + IsWeekend + Holidays,
       state.specification = ss, niter = 2000, data = dat_Each, expected.model.size = 2)
-    # plot(bsts.model)
-    # plot(bsts.model, "components")
-    # plot(bsts.model, "coef")
-    
+    #plot(bsts.model1)
+    #plot(bsts.model1, "components") + scale_x_date(date_breaks = "1 month", labels = date_format("%b-%Y"), limits = as.Date(c('2019-01-01', '2020-05-01')))
+    #plot(bsts.model1, "coef")
     # Estiamting counterfactual and compare with actual post period response
     impact <- CausalImpact(
       bsts.model = bsts.model1,
       post.period.response = post.period.response)
-    impact.plot <- plot(impact) + theme_bw(base_size = 20)+ 
-      scale_x_date(date_breaks = "1 month",  labels=date_format("%b-%Y"),
-                   limits = as.Date(c('2019-01-01','2020-05-01')))
-    plot(impact.plot)
-    # summary(impact)
-    # summary(impact, 'report')
-    temp_impact <- impact$summary
-    temp_impact$CTFIPS <- eachstation
-    tem_pred <- data.frame(impact$series)
-    tem_pred$time <- (row.names(tem_pred))
-    tem_pred$CTNAME <- eachstation
-    tem_pred
+    impact.plot <- plot(impact) +
+      theme_bw(base_size = 20) +
+      scale_x_date(date_breaks = "1 month", labels = date_format("%b-%Y"))
+    #,limits = as.Date(c('2019-01-01', '2020-05-01'))
+    #plot(impact.plot)
+    ### Get the number of burn-ins to discard
+    burn <- SuggestBurn(0.1, bsts.model1)
+    ### Get the components
+    components.withreg <- cbind.data.frame(
+      colMeans(bsts.model1$state.contributions[-(1:burn), "trend",]),
+      colMeans(bsts.model1$state.contributions[-(1:burn), "seasonal.7.1",]),
+      colMeans(bsts.model1$state.contributions[-(1:burn), "Monthly",]),
+      colMeans(bsts.model1$state.contributions[-(1:burn), "regression",]),
+      as.Date((dat_Each$date)))
+    names(components.withreg) <- c("Trend", "Seasonality", "Monthly", "Regression", "Date")
+    components.withreg$Predict <- impact$series$point.pred
+    components.withreg$Response <- impact$series$response
+    components.withreg$Predict_Lower <- impact$series$point.pred.lower
+    components.withreg$Predict_Upper <- impact$series$point.pred.upper
+    components.withreg <- melt(components.withreg, id.vars = "Date")
+    names(components.withreg) <- c("Date", "Component", "Value")
+    # Plot different components
+    ggplot(data = components.withreg, aes(x = Date, y = Value)) +
+      geom_line() +
+      theme_bw() +
+      theme(legend.title = element_blank()) +
+      ylab("") +
+      xlab("") +
+      facet_grid(Component ~ ., scales = "free") +
+      guides(colour = FALSE) +
+      scale_x_date(date_breaks = "12 month", labels = date_format("%b-%Y")) +
+      theme(axis.text.x = element_text(angle = -30, hjust = 0))
+    #, limits = as.Date(c('2010-01-01', '2020-05-01'))
+    # Coefficient
+    #colMeans(bsts.model1$coefficients)
+    #plot(bsts.model1, "coef")
+    components.withreg$CTNAME <- eachstation
+    components.withreg
   }
 stopCluster(cl)
-write.csv(finalMatrix,'finalMatrix_Transit.csv')
-
-# xyplot(point.effect ~ time, groups=finalMatrix$CTNAME, data = finalMatrix)
-
-finalMatrix_cut <- finalMatrix[seq(1, nrow(finalMatrix), 2), ]
-finalMatrix_cut_pvalue <- finalMatrix_cut[finalMatrix_cut$p < 0.1, ]
-summary(finalMatrix_cut)
-summary(finalMatrix_cut_pvalue)
-
-
-# Plot spatial
-s1 <- st_read("C:/Users/hsonghua/Desktop/CausualImpact/National_County_4326.shp")
-s1$GEOID <- as.integer(s1$GEOID)
-colnames(s1)[4] <- "CTFIPS"
-total_res <- sp::merge(s1, finalMatrix_cut_pvalue, by = "CTFIPS")
-png("Causual-effect1.png", units="px", width=2400, height=1200, res=500)
-tm_shape(total_res,projection = "EPSG:5070") +
-  tm_polygons(
-    style = "quantile",
-    col = "AbsEffect",
-    title = '',
-    border.alpha = 0
-  ) + tm_shape(s1,projection = "EPSG:5070") + tm_borders("Black", lwd = 0.5) +
-  tm_layout(legend.title.size = 0.65, legend.text.size = 0.55)
-dev.off()
-
-
-# Merge with county
-# Fit the casual effect
-# Whether the soci-demographic of county is related to the casual effect
-mean_dat_sub <-
-  merge(x = mean_dat,
-        y = finalMatrix_cut_pvalue,
-        by = 'CTFIPS',
-        all.y = TRUE)
-
-alias(
-  lm(
-    AbsEffect ~ Pct_Male + Pct_Age_0_24 + Pct_Age_25_40 + Pct_Age_40_65  + Pct_White + Pct_Black + Pct_Asian +
-      Population_density + Med_House_Income,
-    data = mean_dat_sub
-  )
-)
-
-vif_test <-
-  lm(
-    AbsEffect ~  Pct_Male + Pct_Age_0_24 + Pct_Age_25_40 + Pct_Age_40_65   + Pct_Black + Pct_Asian +
-      Population_density + Med_House_Income,
-    data = mean_dat_sub
-  )
-summary(vif_test)
-vif(vif_test)
-
-GAM_RES1 <-
-  gam(
-    AbsEffect ~ New_cases  + Adj_New_cases + Pct_Male + Pct_Age_0_24 + Pct_Age_25_40 + Pct_Age_40_65  + Pct_White + Pct_Black + Pct_Asian +
-      Population_density + Med_House_Income ,
-    data = mean_dat_sub,
-    family = c("gaussian"),
-    method = "REML"
-  )
-
-summary(GAM_RES1)
+write.csv(finalMatrix, 'finalMatrix_Transit_0806.csv')
