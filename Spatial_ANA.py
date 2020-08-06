@@ -7,11 +7,13 @@ import numpy as np
 import datetime
 import math
 from functools import reduce
+import seaborn as sns
 
 pyproj.__version__  # (2.6.0)
 gpd.__version__
 
 
+################## Calculate all land use/socio-demograhic/road/cases related features ##############################
 # Get the UTM code
 def convert_wgs_to_utm(lon, lat):
     utm_band = str((math.floor((lon + 180) / 6) % 60) + 1)
@@ -25,7 +27,6 @@ def convert_wgs_to_utm(lon, lat):
 
 
 os.chdir(r'D:\Transit\GIS')
-
 Buffer_V = 1000
 
 # Read station
@@ -202,21 +203,49 @@ Road_Length_With_Type['Minor'] = (Road_Length_With_Type['Minor'] * 0.000621371) 
 Road_Length_With_Type['All_Road_Length'] = (Road_Length_With_Type['All_Road_Length'] * 0.000621371) / (
         3.1415926 * (Buffer_V * 0.000621371) * (Buffer_V * 0.000621371))
 
+# Read job density
+Job_density = pd.read_csv(r'D:\Transit\il_od_aux_JT00_2015.csv')
+Job_density['w_geocode'] = Job_density['w_geocode'].astype(str).str[0:-3]
+
+W_Job = Job_density.groupby(['w_geocode']).sum()[
+    ['S000', 'SE01', 'SE02', 'SE03', 'SA01', 'SA02', 'SA03', 'SI01', 'SI02', 'SI03']].reset_index()
+W_Job.columns = ['GEOID', 'WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
+                 'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices']
+W_Job = W_Job.merge(SInBG_index, on='GEOID', how='right')
+W_Job = W_Job.fillna(W_Job.mean())
+for jj in ['WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
+           'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices']:
+    W_Job[jj + '_Density'] = W_Job[jj] / W_Job.AREA * 1e3
+W_Job = W_Job.drop(
+    ['GEOID', 'AREA', 'WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
+     'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices'], axis=1)
+
+# Read population (new)
+T_pop = pd.read_csv(r'D:\Transit\Population_by_2010_Census_Block.csv')
+T_pop['GEOID'] = T_pop['CENSUS BLOCK FULL'].astype(str).str[0:-3]
+T_pop = T_pop[['GEOID', 'TOTAL POPULATION']]
+T_pop = T_pop.groupby('GEOID').sum()['TOTAL POPULATION'].reset_index()
+T_pop = T_pop.merge(SInBG_index, on='GEOID', how='right')
+T_pop = T_pop.fillna(T_pop.mean())
+T_pop['NPop_Density'] = T_pop['TOTAL POPULATION'] / (T_pop['AREA'] * 1e3)
+T_pop = T_pop[['station_id', 'NPop_Density']]
+
 # Merge all data
-dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final]
+dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final, W_Job, T_pop]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final.isnull().sum()
 All_final.describe().T
-plt.plot(All_final['LUM'])
 
 # Change unit
 All_final['PopDensity'] = (All_final['Total_Population'] / 1e3) / All_final['AREA']
 All_final['Income'] = All_final['Income'] / 1e3
+All_final['Cumu_Cases'] = All_final['Cumu_Cases'] / 1e3
 All_final['EmployDensity'] = (All_final['Employed'] / 1e3) / All_final['AREA']
-
 # Output
-All_final.to_csv('Features_Transit.csv')
+All_final.to_csv('Features_Transit_0804.csv')
+################## Calculate all land use/socio-demograhic/road/cases related features ##############################
 
+################## Calculate all land use/socio-demograhic/road/cases related features ##############################
 # Merge with Transit and others
 import pandas as pd
 import os
@@ -228,14 +257,44 @@ import numpy as np
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
 Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
-Features = pd.read_csv(r'Features_Transit.csv', index_col=0)
+Features = pd.read_csv(r'Features_Transit_0804.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final['Relative_Impact'] = -All_final['Relative_Impact']
 All_final.describe().T
-All_final.to_csv('All_final_Transit_R1.csv')
 
+# Read transit related data
+Stop_ID = pd.read_csv(r'D:\Transit\google_transit\stops.txt')
+Stop_ID = Stop_ID[Stop_ID['parent_station'].isin(All_final['station_id'])]
+Stop_times = pd.read_csv(r'D:\Transit\google_transit\stop_times.txt')
+Stop_times = Stop_times[Stop_times['stop_id'].isin(Stop_ID['stop_id'])]
+Stop_times['hour'] = [var[0] for var in Stop_times['arrival_time'].str.split(':')]
+Stop_times['minute'] = [var[1] for var in Stop_times['arrival_time'].str.split(':')]
+Stop_times['second'] = [var[2] for var in Stop_times['arrival_time'].str.split(':')]
+Stop_times['hour'] = Stop_times['hour'].str.replace('24', '00')
+Stop_times['hour'] = Stop_times['hour'].str.replace('25', '01')
+Stop_times['arrival_time'] = pd.to_datetime(
+    '2020-06-01 ' + Stop_times['hour'] + ':' + Stop_times['minute'] + ':' + Stop_times['second'])
+Stop_times = Stop_times.sort_values(by=['stop_id', 'arrival_time']).reset_index(drop=True)
+Stop_times['Freq'] = Stop_times.groupby(['stop_id'])['arrival_time'].diff()
+Stop_times['Freq'] = [var.total_seconds() / 60 for var in Stop_times['Freq']]
+
+# First is the number of trips
+No_Trips = Stop_times.groupby(['stop_id']).count()['trip_id'].reset_index()
+Freq_Trips = Stop_times.groupby(['stop_id']).mean()['Freq'].reset_index()
+No_Trips = No_Trips.merge(Freq_Trips, on='stop_id')
+Stop_ID = Stop_ID[['stop_id', 'parent_station']]
+No_Trips = No_Trips.merge(Stop_ID, on='stop_id')
+No_Trips_1 = No_Trips.groupby(['parent_station']).sum()['trip_id'].reset_index()
+No_Trips_2 = No_Trips.groupby(['parent_station']).mean()['Freq'].reset_index()
+No_Fre_Trips = No_Trips_1.merge(No_Trips_2, on='parent_station')
+No_Fre_Trips.columns = ['station_id', 'Num_trips', 'Freq']
+
+All_final = All_final.merge(No_Fre_Trips, on='station_id')
+plt.plot(All_final['Freq'])
 # sns.pairplot(All_final)
 sns.heatmap(All_final.corr(), cmap=sns.diverging_palette(220, 10, as_cmap=True),
             square=True, annot=False, xticklabels=True, yticklabels=True)
 plt.tight_layout()
+
+All_final.to_csv('All_final_Transit_R2.csv')

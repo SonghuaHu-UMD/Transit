@@ -24,7 +24,7 @@ Daily_Lstaion = pd.read_csv(r'CTA_-_Ridership_-__L__Station_Entries_-_Daily_Tota
 Daily_Lstaion['date'] = pd.to_datetime(Daily_Lstaion['date'])
 Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date']).reset_index(drop=True)
 Daily_Lstaion['Year'] = Daily_Lstaion.date.dt.year
-# Only need after 2010
+# Only need after 2015
 Daily_Lstaion = Daily_Lstaion[Daily_Lstaion['Year'] >= 2015].reset_index(drop=True)
 Daily_Lstaion = Daily_Lstaion.drop_duplicates(subset=['station_id', 'date'])
 # Some stations drop before 2020
