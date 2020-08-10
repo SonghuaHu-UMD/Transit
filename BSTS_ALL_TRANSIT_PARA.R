@@ -11,9 +11,10 @@ library(sf)
 library(tmap)
 library(scales)
 library(reshape2)
+library(forecast)
 
 dat <-
-  read.csv('D:\\Transit\\Daily_Lstaion_Final_0806.csv')
+  read.csv('C:\\Users\\hsonghua\\Desktop\\CausualImpact\\Daily_Lstaion_Final_0806.csv')
 dat$date <- as.Date(dat$date)
 AllCounty <- unique(dat$station_id)
 
@@ -27,12 +28,14 @@ finalMatrix <- data.frame()
 # length(AllCounty)-1800
 finalMatrix <-
   foreach(
-    ccount = 1:length(AllCounty),
+    ccount = 1:(length(AllCounty)),
     .combine = rbind,
-    .packages = c("CausalImpact")
+    .packages = c("CausalImpact", "reshape2", "lattice", "ggplot2", "forecast")
   ) %dopar%
     {
     eachstation <- AllCounty[ccount]
+    # eachstation <- 40440
+    # eachstation <- 40090
     print(ccount)
     dat_Each <- dat[dat$station_id == eachstation,]
     rownames(dat_Each) <- NULL
@@ -43,6 +46,12 @@ finalMatrix <-
     post.period.response <- dat_Each$rides[post.period[1]:post.period[2]]
     dat_Each$rides[post.period[1]:post.period[2]] <- NA
     response <- zoo(dat_Each$rides, dat_Each$date)
+    #plot(response)
+    # drop outliers
+    response_cl <- tsclean(response, replace.missing = TRUE, lambda = NULL)
+    response_cl[post.period[1]:post.period[2]] <- NA
+    response <- zoo(response_cl, dat_Each$date)
+    #plot(response1)
 
     # Build a bsts model
     ss <- AddSemilocalLinearTrend(list(), response)
@@ -58,10 +67,10 @@ finalMatrix <-
     impact <- CausalImpact(
       bsts.model = bsts.model1,
       post.period.response = post.period.response)
-    impact.plot <- plot(impact) +
-      theme_bw(base_size = 20) +
-      scale_x_date(date_breaks = "1 month", labels = date_format("%b-%Y"))
-    #,limits = as.Date(c('2019-01-01', '2020-05-01'))
+    #impact.plot <- plot(impact) +
+    #  theme_bw(base_size = 20) +
+    #  scale_x_date(date_breaks = "1 month", labels = date_format("%b-%Y"), limits = as.Date(c('2019-01-01', '2020-05-01')))
+
     #plot(impact.plot)
     ### Get the number of burn-ins to discard
     burn <- SuggestBurn(0.1, bsts.model1)
@@ -77,19 +86,22 @@ finalMatrix <-
     components.withreg$Response <- impact$series$response
     components.withreg$Predict_Lower <- impact$series$point.pred.lower
     components.withreg$Predict_Upper <- impact$series$point.pred.upper
+    components.withreg$Raw_Response <- dat_Each$rides
+    #plot(impact$series$response)
+    #plot(components.withreg$Raw_Response)
     components.withreg <- melt(components.withreg, id.vars = "Date")
     names(components.withreg) <- c("Date", "Component", "Value")
     # Plot different components
-    ggplot(data = components.withreg, aes(x = Date, y = Value)) +
-      geom_line() +
-      theme_bw() +
-      theme(legend.title = element_blank()) +
-      ylab("") +
-      xlab("") +
-      facet_grid(Component ~ ., scales = "free") +
-      guides(colour = FALSE) +
-      scale_x_date(date_breaks = "12 month", labels = date_format("%b-%Y")) +
-      theme(axis.text.x = element_text(angle = -30, hjust = 0))
+    #ggplot(data = components.withreg, aes(x = Date, y = Value)) +
+    #  geom_line() +
+    #  theme_bw() +
+    #  theme(legend.title = element_blank()) +
+    #  ylab("") +
+    #  xlab("") +
+    #  facet_grid(Component ~ ., scales = "free") +
+    #  guides(colour = FALSE) +
+    #  scale_x_date(date_breaks = "12 month", labels = date_format("%b-%Y")) +
+    #  theme(axis.text.x = element_text(angle = -30, hjust = 0))
     #, limits = as.Date(c('2010-01-01', '2020-05-01'))
     # Coefficient
     #colMeans(bsts.model1$coefficients)
@@ -97,5 +109,6 @@ finalMatrix <-
     components.withreg$CTNAME <- eachstation
     components.withreg
   }
+
 stopCluster(cl)
-write.csv(finalMatrix, 'finalMatrix_Transit_0806.csv')
+write.csv(finalMatrix, 'finalMatrix_Transit_0810.csv')
