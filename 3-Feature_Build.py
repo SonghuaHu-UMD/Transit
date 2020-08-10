@@ -213,25 +213,28 @@ W_Job.columns = ['GEOID', 'WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_333
                  'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices']
 W_Job = W_Job.merge(SInBG_index, on='GEOID', how='right')
 W_Job = W_Job.fillna(W_Job.mean())
-for jj in ['WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
+for jj in ['WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
            'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices']:
-    W_Job[jj + '_Density'] = W_Job[jj] / W_Job.AREA * 1e3
+    W_Job['Pct.' + jj] = W_Job[jj] / W_Job['WTotal_Job']
+
+W_Job['WTotal_Job_Density'] = W_Job['WTotal_Job'] / (W_Job['AREA'] * 1e3)
+
 W_Job = W_Job.drop(
     ['GEOID', 'AREA', 'WTotal_Job', 'WJob_1250', 'WJob_1250_3333', 'WJob_3333', 'WJob_29', 'WJob_30_54', 'WJob_55',
      'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices'], axis=1)
 
-# Read population (new)
-T_pop = pd.read_csv(r'D:\Transit\Population_by_2010_Census_Block.csv')
-T_pop['GEOID'] = T_pop['CENSUS BLOCK FULL'].astype(str).str[0:-3]
-T_pop = T_pop[['GEOID', 'TOTAL POPULATION']]
-T_pop = T_pop.groupby('GEOID').sum()['TOTAL POPULATION'].reset_index()
-T_pop = T_pop.merge(SInBG_index, on='GEOID', how='right')
-T_pop = T_pop.fillna(T_pop.mean())
-T_pop['NPop_Density'] = T_pop['TOTAL POPULATION'] / (T_pop['AREA'] * 1e3)
-T_pop = T_pop[['station_id', 'NPop_Density']]
+# # Read population (new)
+# T_pop = pd.read_csv(r'D:\Transit\Population_by_2010_Census_Block.csv')
+# T_pop['GEOID'] = T_pop['CENSUS BLOCK FULL'].astype(str).str[0:-3]
+# T_pop = T_pop[['GEOID', 'TOTAL POPULATION']]
+# T_pop = T_pop.groupby('GEOID').sum()['TOTAL POPULATION'].reset_index()
+# T_pop = T_pop.merge(SInBG_index, on='GEOID', how='right')
+# T_pop = T_pop.fillna(T_pop.mean())
+# T_pop['NPop_Density'] = T_pop['TOTAL POPULATION'] / (T_pop['AREA'] * 1e3)
+# T_pop = T_pop[['station_id', 'NPop_Density']]
 
 # Merge all data
-dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final, W_Job, T_pop]
+dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final, W_Job]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final.isnull().sum()
 All_final.describe().T
@@ -242,7 +245,7 @@ All_final['Income'] = All_final['Income'] / 1e3
 All_final['Cumu_Cases'] = All_final['Cumu_Cases'] / 1e3
 All_final['EmployDensity'] = (All_final['Employed'] / 1e3) / All_final['AREA']
 # Output
-All_final.to_csv('Features_Transit_0804.csv')
+All_final.to_csv('D:\Transit\Features_Transit_0805.csv')
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
 
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
@@ -256,8 +259,8 @@ import numpy as np
 
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
-Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
-Features = pd.read_csv(r'Features_Transit_0804.csv', index_col=0)
+Impact_C = pd.read_csv(r'Impact_Sta_0810.csv', index_col=0)
+Features = pd.read_csv(r'Features_Transit_0805.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final['Relative_Impact'] = -All_final['Relative_Impact']
@@ -291,10 +294,10 @@ No_Fre_Trips = No_Trips_1.merge(No_Trips_2, on='parent_station')
 No_Fre_Trips.columns = ['station_id', 'Num_trips', 'Freq']
 
 All_final = All_final.merge(No_Fre_Trips, on='station_id')
-plt.plot(All_final['Freq'])
+# plt.plot(All_final['Freq'])
 # sns.pairplot(All_final)
 sns.heatmap(All_final.corr(), cmap=sns.diverging_palette(220, 10, as_cmap=True),
             square=True, annot=False, xticklabels=True, yticklabels=True)
 plt.tight_layout()
 
-All_final.to_csv('All_final_Transit_R2.csv')
+All_final.to_csv('All_final_Transit_R3.csv')
