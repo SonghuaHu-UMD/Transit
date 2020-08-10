@@ -10,92 +10,14 @@ library(leaps)
 library(MASS)
 library(glmnet)
 library(mdatools)
+library(pls)
 
 # Read data
-dat <- read.csv('D:/Transit/All_final_Transit_R2.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
 dat$rides <- round(dat$rides)
 
-# Stepwise
-tmp_Impact <- step(lm(
-  Relative_Impact ~
-    COMMERCIAL +
-      INDUSTRIAL +
-      INSTITUTIONAL +
-      OPENSPACE +
-      RESIDENTIAL +
-      Cumu_Cases +
-      Pct.Male +
-      Pct.Age_0_24 +
-      Pct.Age_25_40 +
-      Pct.Age_40_65 +
-      Pct.White +
-      Pct.Black +
-      Pct.Asian +
-      Income +
-      College +
-      PopDensity +
-      Freq +
-      Num_trips +
-      WJob_OtherServices_Density +
-      WJob_Utilities_Density +
-      WJob_Goods_Product_Density +
-      WTotal_Job_Density,
-  data = dat),
-                   direction = "both")
-summary(tmp_Impact)
-
-tmp_Rides <- step(glm.nb(
-  rides ~
-    COMMERCIAL +
-      INDUSTRIAL +
-      INSTITUTIONAL +
-      OPENSPACE +
-      RESIDENTIAL +
-      Cumu_Cases +
-      Pct.Male +
-      Pct.Age_0_24 +
-      Pct.Age_25_40 +
-      Pct.Age_40_65 +
-      Pct.White +
-      Pct.Black +
-      Pct.Asian +
-      Income +
-      College +
-      PopDensity +
-      Freq +
-      Num_trips +
-      WJob_OtherServices_Density +
-      WJob_Utilities_Density +
-      WJob_Goods_Product_Density +
-      WTotal_Job_Density, data = dat), direction = "both")
-summary(tmp_Rides)
-
-# Use the selection to build gam
-dat$station_id <- as.factor(dat$station_id)
-colnames(dat)
-GAM_RES1 <-
-  mgcv::gam(Relative_Impact ~
-              COMMERCIAL +
-                RESIDENTIAL +
-                Cumu_Cases +
-                Pct.Male +
-                Pct.Age_0_24 +
-                Pct.Age_25_40 +
-                Pct.Age_40_65 +
-                Pct.Black +
-                Income +
-                PopDensity +
-                Freq +
-                Num_trips +
-                WJob_OtherServices_Density +
-                WJob_Utilities_Density +
-                WJob_Goods_Product_Density +
-                ti(LAT, LNG),
-            data = dat, family = c("gaussian"), method = "REML")
-summary(GAM_RES1)
-
-GAM_RES2 <-
-  mgcv::gam(rides ~ COMMERCIAL +
+vif_test <-
+  lm(Relative_Impact ~ COMMERCIAL + # rides
     INDUSTRIAL +
     INSTITUTIONAL +
     OPENSPACE +
@@ -106,74 +28,60 @@ GAM_RES2 <-
     Pct.Age_25_40 +
     Pct.Age_40_65 +
     Pct.White +
-    Pct.Asian +
+    Pct.Black +
     Income +
-    College +
     PopDensity +
     Freq +
     Num_trips +
-    WJob_OtherServices_Density +
-    WJob_Utilities_Density +
-    WJob_Goods_Product_Density +
-    ti(LAT, LNG),
-            data = dat, family = "nb", method = "REML")
-summary(GAM_RES2)
-
-vif_test <-
-  lm(
-    rides ~ COMMERCIAL +
-      INDUSTRIAL +
-      INSTITUTIONAL +
-      OPENSPACE +
-      RESIDENTIAL +
-      Cumu_Cases +
-      Pct.Age_0_24 +
-      Pct.White +
-      PopDensity,
-    data = dat
+    Pct.WJob_Utilities +
+    Pct.WJob_Goods_Product +
+    WTotal_Job_Density,
+     data = dat
   )
 vif(vif_test)
 summary(vif_test)
 
-
-# LASSO/RIDGE
-lambdas <- 10^seq(5, -5, by = -.1)
+# PLS
 x <- dat %>%
   dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL,
                 Cumu_Cases, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
-                Pct.White, Pct.Black, Pct.Indian, Pct.Asian, Income,
-                PopDensity, Freq, Num_trips, WJob_OtherServices_Density, WJob_Utilities_Density,
-                WJob_Goods_Product_Density, WTotal_Job_Density) %>%
+                Pct.White, Pct.Black, Income, PopDensity, Freq, Num_trips, Pct.WJob_Utilities, Pct.WJob_Goods_Product,
+                WTotal_Job_Density) %>%
   data.matrix()
 ## For impact
 y <- dat$Relative_Impact
-# RIDGE
-cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas)
-plot(cv_fit)
-opt_lambda <- cv_fit$lambda.min
-# Rebuilding the model with optimal lambda value
-best_ridge <- glmnet(x, y, alpha = 0, lambda = cv_fit$lambda.min)
-coef(best_ridge)
+
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = T) # method = "oscorespls",
+summary(PLSR_)
+loading.weights(PLSR_)
+PLSR_$coefficients
+PLSR_$scores
+
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+
+plot(PLSR_, ncomp = 6, asp = 1, line = TRUE)
+plot(PLSR_, plottype = "scores", comps = 1:6)
+plot(PLSR_, "loadings", comps = 1:6, legendpos = "topleft")
+
+explvar(PLSR_)
+plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
+plot(PLSR_, plottype = "correlation")
+df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
+
+m <- pls(x, y, 6, cv = 4, scale = TRUE)
+summary(m)
+#plotRegcoeffs(m)
+summary(m$coeffs)
+#m <- selectCompNum(m, 3)
 
 ## For ride
 y <- dat$rides
-# RIDGE
-cv_fit <- cv.glmnet(x, y, alpha = 0, lambda = lambdas, family = "poisson")
-plot(cv_fit)
-opt_lambda <- cv_fit$lambda.min
-# Rebuilding the model with optimal lambda value
-best_ridge <- glmnet(x, y, alpha = 0, lambda = cv_fit$lambda.min, family = "poisson")
-plot(best_ridge)
-coef(best_ridge)
-
-# PCA/PLS
 m <- pls(x, y, 7, cv = 4, scale = TRUE, info = "Shoesize prediction model")
 summary(m)
-plotRegcoeffs(m)
-show(m$coeffs$values[, 3, 1])
+#plotRegcoeffs(m)
 summary(m$coeffs)
-m <- selectCompNum(m, 3)
 
+# PCA/PLS
 # LASSO
 cv_fit <- cv.glmnet(x, y, alpha = 1, lambda = lambdas)
 plot(cv_fit)

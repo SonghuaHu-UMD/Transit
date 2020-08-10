@@ -259,7 +259,7 @@ import numpy as np
 
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
-Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
+Impact_C = pd.read_csv(r'Impact_Sta_0810.csv', index_col=0)
 Features = pd.read_csv(r'Features_Transit_0805.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
