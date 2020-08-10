@@ -52,34 +52,33 @@ x <- dat %>%
   data.matrix()
 ## For impact
 y <- dat$Relative_Impact
-
-PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale =  F) # method = "oscorespls",
+# Find optimal ncomp
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
-PLSR_$coefficients
-#PLSR_$scores
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
-
+# Check model
 plot(PLSR_, ncomp = 6, asp = 1, line = TRUE)
 plot(PLSR_, plottype = "scores", comps = 1:6)
 plot(PLSR_, "loadings", comps = 1:6, legendpos = "topleft")
-
 explvar(PLSR_)
 plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
-
+# Calculate p-value
 m <- pls(x, y, 6, cv = 5, scale = TRUE)
 summary(m)
-#plotRegcoeffs(m)
 summary(m$coeffs)
-#m <- selectCompNum(m, 3)
 
 ## For ride
 y <- dat$rides
-m <- pls(x, y, 7, cv = 4, scale = TRUE, info = "Shoesize prediction model")
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
+summary(PLSR_)
+loading.weights(PLSR_)
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+
+m <- pls(x, y, 3, cv = 4, scale = TRUE, info = "Shoesize prediction model")
 summary(m)
-#plotRegcoeffs(m)
 summary(m$coeffs)
 
 # PCA/PLS
