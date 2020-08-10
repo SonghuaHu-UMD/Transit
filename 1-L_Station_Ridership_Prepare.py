@@ -136,17 +136,3 @@ Count_sta = Daily_Lstaion_Final[Daily_Lstaion_Final['Year'] == 2019].groupby(['s
     ['rides']].reset_index()
 Stations = Stations.merge(Count_sta, on='station_id')
 Stations.to_csv('LStations_Chicago.csv')
-
-# # Calculate the casual impact
-# # Start from 03-02
-# Impact = pd.read_csv(r'C:\Users\Songhua Hu\Desktop\Transit\finalMatrix_Transit.csv', index_col=0)
-# Impact['time'] = pd.to_datetime(Impact['time'])
-# Impact = Impact.reset_index(drop=True)
-# Impact.rename(columns={'CTNAME': 'station_id'}, inplace=True)
-# Impact_0302 = Impact[Impact['time'] >= datetime.datetime(2020, 3, 2)]
-# # Calculate the relative impact
-# Impact_0302['Relative_Impact'] = (Impact_0302['point.effect'] / Impact_0302['point.pred'])
-# Impact_Sta = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
-# plt.plot(Impact_Sta['Relative_Impact'])
-# Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
-# Impact_Sta.to_csv('Impact_Sta.csv')

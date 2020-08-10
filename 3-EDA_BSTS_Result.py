@@ -72,24 +72,11 @@ Impact_0302 = Impact_0302.sort_values(by=['station_id', 'Date']).reset_index(dro
 Impact_0302['Relative_Impact'] = (Impact_0302['Predict'] - Impact_0302['Response']) / Impact_0302['Predict']
 Impact_Sta = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
 plt.plot(Impact_Sta['Relative_Impact'])
-# Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
+Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
+Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
 Impact_Sta.to_csv('Impact_Sta_0810.csv')
-
-# Old version
-Impact = pd.read_csv(r'D:\Transit\finalMatrix_Transit.csv', index_col=0)
-Impact['time'] = pd.to_datetime(Impact['time'])
-Impact = Impact.reset_index(drop=True)
-Impact.rename(columns={'CTNAME': 'station_id'}, inplace=True)
-Impact_0302 = Impact[Impact['time'] >= datetime.datetime(2020, 3, 2)]
-# Calculate the relative impact
-Impact_0302['Relative_Impact'] = (Impact_0302['point.effect'] / Impact_0302['point.pred'])
-Impact_Sta1 = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
-plt.plot(Impact_Sta1['Relative_Impact'])
 
 fig, ax = plt.subplots(figsize=(8, 6), nrows=3, ncols=1)
 sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='point.pred', ax=ax[0])
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='response',  ax=ax[1])
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='point.effect',  ax=ax[2])
-
-# Impact_Sta2 = Impact_Sta1.merge(Impact_Sta, on='station_id')
-# plt.plot(Impact_Sta2['Relative_Impact_x'], -Impact_Sta2['Relative_Impact_y'], 'o')
+sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='response', ax=ax[1])
+sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='point.effect', ax=ax[2])

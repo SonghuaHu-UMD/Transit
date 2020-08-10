@@ -13,7 +13,8 @@ library(mdatools)
 library(pls)
 
 # Read data
-dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
+#dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-
@@ -31,6 +32,7 @@ vif_test <-
     Pct.Black +
     Income +
     PopDensity +
+    College +
     Freq +
     Num_trips +
     Pct.WJob_Utilities +
@@ -45,18 +47,17 @@ summary(vif_test)
 x <- dat %>%
   dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL,
                 Cumu_Cases, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
-                Pct.White, Pct.Black, Income, PopDensity, Freq, Num_trips, Pct.WJob_Utilities, Pct.WJob_Goods_Product,
-                WTotal_Job_Density) %>%
+                Pct.White, Pct.Black, Income, PopDensity, College, Freq, Num_trips,
+                Pct.WJob_Utilities, Pct.WJob_Goods_Product, WTotal_Job_Density) %>%
   data.matrix()
 ## For impact
 y <- dat$Relative_Impact
 
-PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = T) # method = "oscorespls",
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale =  F) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
 PLSR_$coefficients
-PLSR_$scores
-
+#PLSR_$scores
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 
 plot(PLSR_, ncomp = 6, asp = 1, line = TRUE)
@@ -68,7 +69,7 @@ plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
 
-m <- pls(x, y, 6, cv = 4, scale = TRUE)
+m <- pls(x, y, 6, cv = 5, scale = TRUE)
 summary(m)
 #plotRegcoeffs(m)
 summary(m$coeffs)
