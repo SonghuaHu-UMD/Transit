@@ -13,8 +13,8 @@ library(mdatools)
 library(pls)
 
 # Read data
-dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
-#dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
+#dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-

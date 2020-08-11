@@ -5,6 +5,9 @@ import datetime
 import matplotlib.pylab as plt
 from scipy import stats
 from pandas.tseries.holiday import USFederalHolidayCalendar
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 os.chdir(r'D:\Transit')
 
@@ -38,6 +41,50 @@ print(len(set(Daily_Lstaion['station_id'])))
 Daily_Lstaion = Daily_Lstaion.set_index('date').groupby(['station_id']).resample('d')[
     ['rides', 'daytype']].asfreq().reset_index()
 Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date'])
+
+# Read cases
+cases = pd.read_csv(r'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
+cases = cases[(cases['county'] == 'Cook') & (cases['state'] == 'Illinois')].reset_index(drop=True)
+cases['date'] = pd.to_datetime(cases['date'])
+cases.set_index('date', inplace=True)
+cases['cases'] = cases['cases'].diff()
+cases = cases.fillna(0)
+
+# Plot time-varying figure
+All_ride = Daily_Lstaion.groupby('date').sum()['rides'].reset_index()
+All_ride.set_index('date', inplace=True)
+myFmt = mdates.DateFormatter('%b-%d')
+plt.rcParams.update({'font.size': 20, 'font.family': "Times New Roman"})
+fig, ax = plt.subplots(figsize=(18, 9))  # create a new figure with a default 111 subplot
+ax.plot(All_ride['rides'], color='#2f4c58', alpha=0.8, lw=1)
+ax.set_ylabel('Ridership')
+ax.set_xlabel('Date')
+ax.set_ylim(10000, 1000000)
+ax.set_xlim(datetime.datetime(2001, 1, 1), datetime.datetime(2020, 4, 30))
+ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
+
+axins = inset_axes(ax, 10, 1.8, loc=9)
+axins.plot(All_ride['rides'], color='#111b1e')
+axins.set_xlim(datetime.datetime(2020, 1, 1), datetime.datetime(2020, 4, 30))
+axins.set_ylim(10000, 680000)
+axins.spines['top'].set_visible(False)
+axins.spines['right'].set_visible(False)
+axins.ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
+axins.set_ylabel('Ridership')
+
+axtwins = axins.twinx()
+axtwins.yaxis.set_offset_position('right')
+axtwins.bar(cases.index, cases['cases'], color='#111b1e', alpha=0.5)
+axtwins.set_ylim(0, 2500)
+axtwins.ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
+axtwins.xaxis.set_major_formatter(myFmt)
+axtwins.set_ylabel('Cases')
+
+# plt.yticks(visible=False)
+# plt.xticks(visible=False)
+mark_inset(ax, axins, loc1=3, loc2=1, fc="none", ec="#ff6d69", lw=2, ls='--')
+plt.tight_layout()
+plt.savefig('FIG1.png', dpi=600)
 
 # Merge with weather and holidays
 # W=Weekday, A=Saturday, U=Sunday/Holiday
