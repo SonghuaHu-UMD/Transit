@@ -8,9 +8,20 @@ import datetime
 import math
 from functools import reduce
 import seaborn as sns
+from scipy.stats import pearsonr
 
 pyproj.__version__  # (2.6.0)
 gpd.__version__
+
+
+def calculate_pvalues(df):
+    df = df.dropna()._get_numeric_data()
+    dfcols = pd.DataFrame(columns=df.columns)
+    pvalues = dfcols.transpose().join(dfcols, how='outer')
+    for r in df.columns:
+        for c in df.columns:
+            pvalues[r][c] = round(pearsonr(df[r], df[c])[1], 4)
+    return pvalues
 
 
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
@@ -259,7 +270,7 @@ import numpy as np
 
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
-Impact_C = pd.read_csv(r'Impact_Sta_0810.csv', index_col=0)
+Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
 Features = pd.read_csv(r'Features_Transit_0805.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
@@ -292,11 +303,39 @@ No_Trips_2 = No_Trips.groupby(['parent_station']).mean()['Freq'].reset_index()
 No_Fre_Trips = No_Trips_1.merge(No_Trips_2, on='parent_station')
 No_Fre_Trips.columns = ['station_id', 'Num_trips', 'Freq']
 
+# Merge all in one matrix
 All_final = All_final.merge(No_Fre_Trips, on='station_id')
-# plt.plot(All_final['Freq'])
-# sns.pairplot(All_final)
-sns.heatmap(All_final.corr(), cmap=sns.diverging_palette(220, 10, as_cmap=True),
-            square=True, annot=False, xticklabels=True, yticklabels=True)
-plt.tight_layout()
+# All_final.to_csv('All_final_Transit_R_0810.csv')
 
-All_final.to_csv('All_final_Transit_R_0810.csv')
+
+# PLOT CORR
+corr_matr = All_final[['Relative_Impact', 'rides', 'COMMERCIAL', 'INDUSTRIAL',
+                       'INSTITUTIONAL', 'OPENSPACE', 'RESIDENTIAL', 'LUM',
+                       'Cumu_Cases', 'Pct.Male', 'Pct.Age_0_24', 'Pct.Age_25_40',
+                       'Pct.Age_40_65', 'Pct.White', 'Pct.Black',
+                       'Income', 'College', 'Pct.WJob_Goods_Product',
+                       'Pct.WJob_Utilities', 'Pct.WJob_OtherServices', 'WTotal_Job_Density',
+                       'PopDensity', 'Num_trips', 'Freq']]
+corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'COMMERCIAL': 'Commercial',
+                  'INDUSTRIAL': 'Industrial', 'INSTITUTIONAL': 'Institutional', 'OPENSPACE': 'Openspace',
+                  'RESIDENTIAL': 'Residential', 'Cumu_Cases': 'No. of Cases', 'Income': 'Median Income',
+                  'College': 'Pct. Collge Degree', 'Pct.WJob_Goods_Product': 'Pct.Job_Goods_Product',
+                  'Pct.WJob_Utilities': 'Pct.Job_Utilities', 'Pct.WJob_OtherServices': 'Pct.Job_Others',
+                  'WTotal_Job_Density': 'Job Density', 'PopDensity': 'Population Density',
+                  'Num_trips': 'No. of Trips', 'Freq': 'Transit Frequency'}, axis=1, inplace=True)
+corr_p = calculate_pvalues(corr_matr)
+corr_p[(corr_p > 0.1)] = 0.1
+corr_p[(corr_p < 0.1) & (corr_p >= 0.05)] = 0.05
+corr_p[(corr_p < 0.05) & (corr_p >= 0.01)] = 0.01
+corr_p[(corr_p < 0.01) & (corr_p >= 0.001)] = 0.001
+corr_p[(corr_p < 0.001) & (corr_p >= 0)] = 0
+
+corr_p = corr_p.replace({0.1: '', 0.05: '.', 0.01: '*', 0.001: '**', 0: "***"})
+
+fig, ax = plt.subplots(figsize=(11, 9))
+plt.rcParams.update({'font.size': 14, 'font.family': "Times New Roman"})
+sns.heatmap(corr_matr.corr(), annot=corr_p.values, fmt='',
+            cmap=sns.diverging_palette(220, 10, as_cmap=True),
+            square=True, xticklabels=True, yticklabels=True, linewidths=.5)
+plt.tight_layout()
+plt.savefig('CORR.png', dpi=600)
