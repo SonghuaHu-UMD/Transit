@@ -56,7 +56,7 @@ y <- dat$Relative_Impact
 PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
-png('NCOM-1.png', units = "in", width = 5, height = 5, res = 600)
+png('Figure/NCOM-1.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 #ggsave("1-NOCOM.png", units = "in", width = 3.1, height = 3, dpi = 600)
@@ -79,7 +79,7 @@ y <- dat$rides
 PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
-png('NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
+png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 

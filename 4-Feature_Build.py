@@ -140,6 +140,7 @@ Num_Cases_Neg = Num_Cases[Num_Cases['Diff_Start'] <= 0]
 Num_Cases_Cum = Num_Cases_Neg.groupby(['ZIP Code']).tail(1)
 Num_Cases_Cum = Num_Cases_Cum[['ZIP Code', 'Cases - Cumulative']]
 Num_Cases_Cum.columns = ['ZIP_CODE', 'Cumu_Cases']
+Num_Cases_Cum.to_csv('Num_Cases_Cum.csv')
 StationZIP = StationZIP.merge(Num_Cases_Cum, on='ZIP_CODE', how='left')
 StationZIP = StationZIP.fillna(0)
 
