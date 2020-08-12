@@ -221,3 +221,25 @@ Impact_Sta1 = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].rese
 Impact_Sta2 = Impact_Sta1.merge(Impact_Sta, on='station_id')
 plt.plot(Impact_Sta2['Relative_Impact_x'], -Impact_Sta2['Relative_Impact_y'], 'o')
 
+# New version
+Impact = pd.read_csv(r'D:\Transit\finalMatrix_Transit_0810.csv', index_col=0)
+Impact = pd.pivot_table(Impact, values='Value', index=['Date', 'CTNAME'], columns=['Component']).reset_index()
+Impact['Date'] = pd.to_datetime(Impact['Date'])
+Impact.rename(columns={'CTNAME': 'station_id'}, inplace=True)
+Impact_0302 = Impact[Impact['Date'] >= datetime.datetime(2020, 3, 2)]
+Impact_0302 = Impact_0302.sort_values(by=['station_id', 'Date']).reset_index(drop=True)
+# Calculate the relative impact
+Impact_0302['Relative_Impact'] = (Impact_0302['Predict'] - Impact_0302['Response']) / Impact_0302['Predict']
+Impact_Sta = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
+plt.plot(Impact_Sta['Relative_Impact'])
+Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
+Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
+Impact_Sta.to_csv('Impact_Sta_0810.csv')
+
+Impact_0302['Effect'] = -Impact_0302['Predict'] + Impact_0302['Response']
+Impact_0302['REffect'] = (-Impact_0302['Predict'] + Impact_0302['Response']) / (Impact_0302['Predict'])
+fig, ax = plt.subplots(figsize=(16, 6), nrows=4, ncols=1)
+sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Predict', ax=ax[0], legend=False)
+sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Response', ax=ax[1], legend=False)
+sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Effect', ax=ax[2], legend=False)
+sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='REffect', ax=ax[3], legend=False)
