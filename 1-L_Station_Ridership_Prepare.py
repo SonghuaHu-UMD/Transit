@@ -27,7 +27,8 @@ Daily_Lstaion = pd.read_csv(r'CTA_-_Ridership_-__L__Station_Entries_-_Daily_Tota
 Daily_Lstaion['date'] = pd.to_datetime(Daily_Lstaion['date'])
 Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date']).reset_index(drop=True)
 Daily_Lstaion['Year'] = Daily_Lstaion.date.dt.year
-# Daily_Lstaion.groupby('date').sum()['rides'].plot()
+
+# Daily_Lstaion.groupby('Year').sum()['rides'].plot()
 # Only need after 2015
 # Daily_Lstaion = Daily_Lstaion[Daily_Lstaion['Year'] >= 2015].reset_index(drop=True)
 Daily_Lstaion = Daily_Lstaion.drop_duplicates(subset=['station_id', 'date'])
@@ -44,11 +45,14 @@ Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date'])
 
 # Read cases
 cases = pd.read_csv(r'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
+cases_0430 = cases[cases['date'] == '2020-04-30']
+cases_0430.to_csv('cases_0430.csv')
 cases = cases[(cases['county'] == 'Cook') & (cases['state'] == 'Illinois')].reset_index(drop=True)
 cases['date'] = pd.to_datetime(cases['date'])
 cases.set_index('date', inplace=True)
 cases['cases'] = cases['cases'].diff()
 cases = cases.fillna(0)
+cases.to_csv('cases_chicago.csv')
 
 # Plot time-varying figure
 All_ride = Daily_Lstaion.groupby('date').sum()['rides'].reset_index()
@@ -180,7 +184,11 @@ Daily_Lstaion_Final[['station_id', 'date', 'daytype', 'rides',
                      'Week', 'IsWeekend', 'Holidays', 'PRCP', 'TMAX', 'TMIN']].to_csv(
     'Daily_Lstaion_Final_0806.csv', index=False)
 
+# Output for arcgis
 Count_sta = Daily_Lstaion_Final[Daily_Lstaion_Final['Year'] == 2019].groupby(['station_id']).mean()[
     ['rides']].reset_index()
 Stations = Stations.merge(Count_sta, on='station_id')
 Stations.to_csv('LStations_Chicago.csv')
+
+Daily_Lstaion_Final = pd.read_csv(r'Daily_Lstaion_Final_0806.csv')
+Daily_Lstaion_Final.describe().T.to_csv('Desc_BSTS.csv')

@@ -14,7 +14,7 @@ library(pls)
 
 # Read data
 #dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
-dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-
@@ -62,7 +62,7 @@ dev.off()
 #ggsave("1-NOCOM.png", units = "in", width = 3.1, height = 3, dpi = 600)
 
 # Check model
-plot(PLSR_, ncomp = 6, asp = 1, line = TRUE)
+plot(PLSR_, ncomp = 4, asp = 1, line = TRUE)
 plot(PLSR_, plottype = "scores", comps = 1:6)
 plot(PLSR_, "loadings", comps = 1:6, legendpos = "topleft")
 explvar(PLSR_)
@@ -70,7 +70,7 @@ plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
 # Calculate p-value
-m <- pls(x, y, 6, cv = 5, scale = TRUE)
+m <- pls(x, y, 4, cv = 5, scale = TRUE)
 summary(m)
 summary(m$coeffs)
 

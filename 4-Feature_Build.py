@@ -57,7 +57,7 @@ Buffer_S['station_id'] = Station['station_id']
 
 ## Socio calculation
 # Read BlockGroup
-BlockGroup = gpd.read_file(r'BlockGroup.shp')
+BlockGroup = gpd.read_file(r'D:\Transit\GIS\BlockGroup.shp')
 BlockGroup = BlockGroup.to_crs('EPSG:' + str(utm_code))
 # BlockGroup['ALAND'] = BlockGroup['ALAND'] * 3.86102e-7  # to sq. miles
 BlockGroup['AREA'] = BlockGroup.geometry.area * 3.86102e-7  # to sq. miles
@@ -236,14 +236,15 @@ W_Job = W_Job.drop(
      'WJob_Goods_Product', 'WJob_Utilities', 'WJob_OtherServices'], axis=1)
 
 # # Read population (new)
-# T_pop = pd.read_csv(r'D:\Transit\Population_by_2010_Census_Block.csv')
-# T_pop['GEOID'] = T_pop['CENSUS BLOCK FULL'].astype(str).str[0:-3]
-# T_pop = T_pop[['GEOID', 'TOTAL POPULATION']]
-# T_pop = T_pop.groupby('GEOID').sum()['TOTAL POPULATION'].reset_index()
-# T_pop = T_pop.merge(SInBG_index, on='GEOID', how='right')
-# T_pop = T_pop.fillna(T_pop.mean())
-# T_pop['NPop_Density'] = T_pop['TOTAL POPULATION'] / (T_pop['AREA'] * 1e3)
-# T_pop = T_pop[['station_id', 'NPop_Density']]
+T_pop = pd.read_csv(r'D:\Transit\Population_by_2010_Census_Block.csv')
+T_pop['GEOID'] = T_pop['CENSUS BLOCK FULL'].astype(str).str[0:-3]
+T_pop = T_pop[['GEOID', 'TOTAL POPULATION']]
+T_pop = T_pop.groupby('GEOID').sum()['TOTAL POPULATION'].reset_index()
+T_pop = T_pop.merge(SInBG_index, on='GEOID', how='right')
+T_pop = T_pop.fillna(T_pop.mean())
+T_pop['NPop_Density'] = T_pop['TOTAL POPULATION'] / (T_pop['AREA'] * 1e3)
+T_pop = T_pop[['station_id', 'NPop_Density']]
+# T_pop.describe().T
 
 # Merge all data
 dfs = [Road_Length_With_Type, LandUse_Area_PCT_Final, LUM, StationZIP, Socid_Raw_Final, W_Job]
@@ -306,7 +307,11 @@ No_Fre_Trips.columns = ['station_id', 'Num_trips', 'Freq']
 
 # Merge all in one matrix
 All_final = All_final.merge(No_Fre_Trips, on='station_id')
-# All_final.to_csv('All_final_Transit_R_0810.csv')
+# Change unit
+All_final['Num_trips'] = All_final['Num_trips'] / 1e3
+All_final['rides'] = All_final['rides'] / 1e3
+All_final.describe().T
+# All_final.to_csv('All_final_Transit_R_0812.csv')
 
 
 # PLOT CORR
@@ -317,13 +322,18 @@ corr_matr = All_final[['Relative_Impact', 'rides', 'COMMERCIAL', 'INDUSTRIAL',
                        'Income', 'College', 'Pct.WJob_Goods_Product',
                        'Pct.WJob_Utilities', 'Pct.WJob_OtherServices', 'WTotal_Job_Density',
                        'PopDensity', 'Num_trips', 'Freq']]
+# corr_matr['Relative_Impact'] = -corr_matr['Relative_Impact']
 corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'COMMERCIAL': 'Commercial',
-                  'INDUSTRIAL': 'Industrial', 'INSTITUTIONAL': 'Institutional', 'OPENSPACE': 'Openspace',
-                  'RESIDENTIAL': 'Residential', 'Cumu_Cases': 'No. of Cases', 'Income': 'Median Income',
-                  'College': 'Pct. Collge Degree', 'Pct.WJob_Goods_Product': 'Pct.Job_Goods_Product',
-                  'Pct.WJob_Utilities': 'Pct.Job_Utilities', 'Pct.WJob_OtherServices': 'Pct.Job_Others',
+                  'INDUSTRIAL': 'Industrial', 'INSTITUTIONAL': 'Institutional', 'OPENSPACE': 'Open space',
+                  'RESIDENTIAL': 'Residential', 'Cumu_Cases': 'Cases', 'Pct.Male': 'Male',
+                  'Pct.Age_0_24': 'Age-0_24', 'Pct.Age_25_40': 'Age-25_40',
+                  'Pct.Age_40_65': 'Age-40_65', 'Pct.White': 'Race-White', 'Pct.Black': 'Race-Black',
+                  'Income': 'Median Income',
+                  'College': 'College Degree', 'Pct.WJob_Goods_Product': 'Job-Goods',
+                  'Pct.WJob_Utilities': 'Job-Utilities', 'Pct.WJob_OtherServices': 'Job-Others',
                   'WTotal_Job_Density': 'Job Density', 'PopDensity': 'Population Density',
-                  'Num_trips': 'No. of Trips', 'Freq': 'Transit Frequency'}, axis=1, inplace=True)
+                  'Num_trips': 'Trips', 'Freq': 'Transit Frequency'}, axis=1, inplace=True)
+corr_matr.describe().T.to_csv('Describe.csv')
 corr_p = calculate_pvalues(corr_matr)
 corr_p[(corr_p > 0.1)] = 0.1
 corr_p[(corr_p < 0.1) & (corr_p >= 0.05)] = 0.05
