@@ -13,11 +13,12 @@ library(mdatools)
 library(pls)
 
 # Read data
-dat <- read.csv('D:/Transit/All_final_Transit_R3.csv')
+#dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-
-  lm(Relative_Impact ~ COMMERCIAL + # rides
+  lm(rides ~ COMMERCIAL + # rides
     INDUSTRIAL +
     INSTITUTIONAL +
     OPENSPACE +
@@ -31,6 +32,7 @@ vif_test <-
     Pct.Black +
     Income +
     PopDensity +
+    College +
     Freq +
     Num_trips +
     Pct.WJob_Utilities +
@@ -45,40 +47,44 @@ summary(vif_test)
 x <- dat %>%
   dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL,
                 Cumu_Cases, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
-                Pct.White, Pct.Black, Income, PopDensity, Freq, Num_trips, Pct.WJob_Utilities, Pct.WJob_Goods_Product,
-                WTotal_Job_Density) %>%
+                Pct.White, Pct.Black, Income, PopDensity, College, Freq, Num_trips,
+                Pct.WJob_Utilities, Pct.WJob_Goods_Product, WTotal_Job_Density) %>%
   data.matrix()
 ## For impact
 y <- dat$Relative_Impact
-
-PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = T) # method = "oscorespls",
+# Find optimal ncomp
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
-PLSR_$coefficients
-PLSR_$scores
-
+png('Figure/NCOM-1.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+dev.off()
+#ggsave("1-NOCOM.png", units = "in", width = 3.1, height = 3, dpi = 600)
 
-plot(PLSR_, ncomp = 6, asp = 1, line = TRUE)
+# Check model
+plot(PLSR_, ncomp = 4, asp = 1, line = TRUE)
 plot(PLSR_, plottype = "scores", comps = 1:6)
 plot(PLSR_, "loadings", comps = 1:6, legendpos = "topleft")
-
 explvar(PLSR_)
 plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
-
-m <- pls(x, y, 6, cv = 4, scale = TRUE)
+# Calculate p-value
+m <- pls(x, y, 4, cv = 10, scale = TRUE)
 summary(m)
-#plotRegcoeffs(m)
 summary(m$coeffs)
-#m <- selectCompNum(m, 3)
 
 ## For ride
 y <- dat$rides
-m <- pls(x, y, 7, cv = 4, scale = TRUE, info = "Shoesize prediction model")
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
+summary(PLSR_)
+loading.weights(PLSR_)
+png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+dev.off()
+
+m <- pls(x, y, 3, cv = 4, scale = TRUE, info = "Shoesize prediction model")
 summary(m)
-#plotRegcoeffs(m)
 summary(m$coeffs)
 
 # PCA/PLS
