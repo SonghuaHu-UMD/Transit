@@ -18,7 +18,7 @@ dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-
-  lm(Relative_Impact ~ COMMERCIAL + # rides
+  lm(rides ~ COMMERCIAL + # rides
     INDUSTRIAL +
     INSTITUTIONAL +
     OPENSPACE +
@@ -70,7 +70,7 @@ plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
 # Calculate p-value
-m <- pls(x, y, 4, cv = 5, scale = TRUE)
+m <- pls(x, y, 4, cv = 10, scale = TRUE)
 summary(m)
 summary(m$coeffs)
 

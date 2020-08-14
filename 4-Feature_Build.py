@@ -334,6 +334,7 @@ corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'C
                   'WTotal_Job_Density': 'Job Density', 'PopDensity': 'Population Density',
                   'Num_trips': 'Trips', 'Freq': 'Transit Frequency'}, axis=1, inplace=True)
 corr_matr.describe().T.to_csv('Describe.csv')
+corr_matr.corr().to_csv('Corr.csv')
 corr_p = calculate_pvalues(corr_matr)
 corr_p[(corr_p > 0.1)] = 0.1
 corr_p[(corr_p < 0.1) & (corr_p >= 0.05)] = 0.05

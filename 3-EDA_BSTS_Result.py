@@ -124,42 +124,53 @@ Impact_0302['Relative_Impact_upper'] = (Impact_0302['point.effect.upper'] / Impa
 
 Impact_Sta = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
 plt.plot(Impact_Sta['Relative_Impact'])
+sns.distplot(Impact_Sta['Relative_Impact'])
 Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
 Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
 Impact_Sta.to_csv('Impact_Sta_.csv')
 
-Impact_Sta_plot = Impact_0302.groupby(['time']).mean().reset_index()
+Impact_0101 = Impact[Impact['time'] >= datetime.datetime(2020, 2, 1)]
+# Calculate the relative impact
+Impact_0101['Relative_Impact'] = (Impact_0101['point.effect'] / Impact_0101['point.pred'])
+Impact_0101['Relative_Impact_lower'] = (Impact_0101['point.effect.lower'] / Impact_0101['point.pred.lower'])
+Impact_0101['Relative_Impact_upper'] = (Impact_0101['point.effect.upper'] / Impact_0101['point.pred.upper'])
+Impact_Sta_plot = Impact_0101.groupby(['time']).mean().reset_index()
 
 sns.set_palette("deep")
 # sns.color_palette(flatui, Impact_0302.station_id.unique().shape[0])
 # flatui = ["#2f4c58"]
-fig, ax = plt.subplots(figsize=(8, 8), nrows=4, ncols=1, sharex=True)
+fig, ax = plt.subplots(figsize=(12, 8), nrows=4, ncols=1, sharex=True)
 ax[0].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
 ax[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
 ax[2].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
 
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='point.pred', ax=ax[0], legend=False,
-             palette=sns.color_palette("Set2", Impact_0302.station_id.unique().shape[0]), alpha=0.3)
+sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='point.pred', ax=ax[0], legend=False,
+             palette=sns.color_palette("Set2", Impact_0101.station_id.unique().shape[0]), alpha=0.3)
 ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred'], color='#2f4c58')
 # ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred.lower'], '--', color='#2f4c58')
 # ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred.upper'], '--', color='#2f4c58')
 ax[0].set_ylabel('Prediction')
 
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='response', ax=ax[1], legend=False,
-             palette=sns.color_palette("Set2", Impact_0302.station_id.unique().shape[0]), alpha=0.3)
+sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='response', ax=ax[1], legend=False,
+             palette=sns.color_palette("Set2", Impact_0101.station_id.unique().shape[0]), alpha=0.3)
 ax[1].plot(Impact_Sta_plot['time'], Impact_Sta_plot['response'], color='#2f4c58')
 ax[1].set_ylabel('Response')
 
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='point.effect', ax=ax[2], legend=False,
-             palette=sns.color_palette("Set2", Impact_0302.station_id.unique().shape[0]), alpha=0.3)
+sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='point.effect', ax=ax[2], legend=False,
+             palette=sns.color_palette("Set2", Impact_0101.station_id.unique().shape[0]), alpha=0.3)
+ax[2].plot([datetime.datetime(2020, 2, 1), datetime.datetime(2020, 4, 30)], [0, 0], '--', color='r')
 ax[2].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.effect'], color='#2f4c58')
+ax[2].plot([datetime.datetime(2020, 3, 11), datetime.datetime(2020, 3, 11)], [-2 * 10e3, 0.2 * 10e3], '--',
+           color='#2f4c58')
 # ax[2].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.effect.lower'], '--', color='#2f4c58')
 # ax[2].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.effect.upper'], '--', color='#2f4c58')
-ax[2].set_ylabel('Absolute impact')
+ax[2].set_ylabel('Piecewise impact')
 
-sns.lineplot(data=Impact_0302, x='time', hue='station_id', y='Relative_Impact', ax=ax[3], legend=False,
-             palette=sns.color_palette("Set2", Impact_0302.station_id.unique().shape[0]), alpha=0.3)
+sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='Relative_Impact', ax=ax[3], legend=False,
+             palette=sns.color_palette("Set2", Impact_0101.station_id.unique().shape[0]), alpha=0.3)
 ax[3].plot(Impact_Sta_plot['time'], Impact_Sta_plot['Relative_Impact'], color='#2f4c58')
+ax[3].plot([datetime.datetime(2020, 2, 1), datetime.datetime(2020, 4, 30)], [0, 0], '--', color='r')
+ax[3].plot([datetime.datetime(2020, 3, 11), datetime.datetime(2020, 3, 11)], [-1, 1], '--', color='#2f4c58')
 # ax[3].plot(Impact_Sta_plot['time'], Impact_Sta_plot['Relative_Impact_lower'], '--', color='#2f4c58')
 # ax[3].plot(Impact_Sta_plot['time'], Impact_Sta_plot['Relative_Impact_upper'], '--', color='#2f4c58')
 ax[3].xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
