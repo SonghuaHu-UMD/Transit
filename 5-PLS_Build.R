@@ -45,10 +45,10 @@ summary(vif_test)
 
 # PLS
 x <- dat %>%
-  dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL,
+  dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL, LUM,
                 Cumu_Cases, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
-                Pct.White, Pct.Black, Income, PopDensity, College, Freq, Num_trips,
-                Pct.WJob_Utilities, Pct.WJob_Goods_Product, WTotal_Job_Density) %>%
+                Pct.White, Pct.Black, Income, College, Pct.WJob_Goods_Product, Pct.WJob_Utilities, WTotal_Job_Density,
+                PopDensity, Num_trips, Freq,) %>%
   data.matrix()
 ## For impact
 y <- dat$Relative_Impact
@@ -83,7 +83,7 @@ png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 
-m <- pls(x, y, 3, cv = 4, scale = TRUE, info = "Shoesize prediction model")
+m <- pls(x, y, 3, cv = 10, scale = TRUE, info = "Shoesize prediction model")
 summary(m)
 summary(m$coeffs)
 
