@@ -52,7 +52,7 @@ cases['date'] = pd.to_datetime(cases['date'])
 cases.set_index('date', inplace=True)
 cases['cases'] = cases['cases'].diff()
 cases = cases.fillna(0)
-cases.to_csv('cases_chicago.csv')
+# cases.to_csv('cases_chicago.csv')
 
 # Plot time-varying figure
 All_ride = Daily_Lstaion.groupby('date').sum()['rides'].reset_index()
@@ -60,7 +60,7 @@ All_ride.set_index('date', inplace=True)
 myFmt = mdates.DateFormatter('%b-%d')
 plt.rcParams.update({'font.size': 24, 'font.family': "Times New Roman"})
 fig, ax = plt.subplots(figsize=(14, 9))  # create a new figure with a default 111 subplot
-ax.plot(All_ride['rides'], color='#2f4c58', alpha=0.5, lw=1)
+ax.plot(All_ride['rides'], color='#8fc0a9', alpha=0.8, lw=1)
 ax.set_ylabel('Ridership')
 ax.set_xlabel('Date')
 ax.set_ylim(10000, 1000000)
@@ -90,6 +90,7 @@ mark_inset(ax, axins, loc1=3, loc2=1, fc="none", ec="#ff6d69", lw=2, ls='--')
 # plt.tight_layout()
 plt.subplots_adjust(top=0.951, bottom=0.088, left=0.067, right=0.987, hspace=0.225, wspace=0.2)
 plt.savefig('FIG1.png', dpi=600)
+plt.savefig('FIG1.svg')
 
 # Merge with weather and holidays
 # W=Weekday, A=Saturday, U=Sunday/Holiday

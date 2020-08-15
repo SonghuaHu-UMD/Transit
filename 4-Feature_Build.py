@@ -8,20 +8,9 @@ import datetime
 import math
 from functools import reduce
 import seaborn as sns
-from scipy.stats import pearsonr
 
 pyproj.__version__  # (2.6.0)
 gpd.__version__
-
-
-def calculate_pvalues(df):
-    df = df.dropna()._get_numeric_data()
-    dfcols = pd.DataFrame(columns=df.columns)
-    pvalues = dfcols.transpose().join(dfcols, how='outer')
-    for r in df.columns:
-        for c in df.columns:
-            pvalues[r][c] = round(pearsonr(df[r], df[c])[1], 4)
-    return pvalues
 
 
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
@@ -269,6 +258,18 @@ from functools import reduce
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import pearsonr
+
+
+def calculate_pvalues(df):
+    df = df.dropna()._get_numeric_data()
+    dfcols = pd.DataFrame(columns=df.columns)
+    pvalues = dfcols.transpose().join(dfcols, how='outer')
+    for r in df.columns:
+        for c in df.columns:
+            pvalues[r][c] = round(pearsonr(df[r], df[c])[1], 4)
+    return pvalues
+
 
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
@@ -347,7 +348,8 @@ corr_p = corr_p.replace({0.1: '', 0.05: '.', 0.01: '*', 0.001: '**', 0: "***"})
 fig, ax = plt.subplots(figsize=(11, 9))
 plt.rcParams.update({'font.size': 14, 'font.family': "Times New Roman"})
 sns.heatmap(corr_matr.corr(), annot=corr_p.values, fmt='',
-            cmap=sns.diverging_palette(220, 10, as_cmap=True),
+            cmap=sns.diverging_palette(240, 130, as_cmap=True),
             square=True, xticklabels=True, yticklabels=True, linewidths=.5)
 plt.tight_layout()
 plt.savefig('CORR.png', dpi=600)
+plt.savefig('CORR.svg')
