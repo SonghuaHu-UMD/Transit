@@ -14,7 +14,7 @@ library(reshape2)
 library(forecast)
 
 dat <-
-  read.csv('C:\\Users\\hsonghua\\Desktop\\CausualImpact\\Daily_Lstaion_Final_0806.csv')
+  read.csv('C:\\Users\\hsonghua\\Desktop\\CausualImpact\\Daily_Lstaion_Final.csv') # Daily_Lstaion_Final_0806.csv
 dat$date <- as.Date(dat$date)
 AllCounty <- unique(dat$station_id)
 
@@ -113,3 +113,144 @@ finalMatrix <-
 
 stopCluster(cl)
 write.csv(finalMatrix, 'finalMatrix_Transit_0810.csv')
+
+GetInclusionProbabilities <- function(bsts.object) {
+  # Pulls code from
+  # - BoomSpikeSlab::PlotMarginalInclusionProbabilities
+  # - bsts::PlotBstsCoefficients
+  burn <- SuggestBurn(0.1, bsts.object)
+  beta <- bsts.object$coefficients
+  beta <- beta[-(1:burn), , drop = FALSE]
+  inclusion.prob <- colMeans(beta != 0)
+  index <- order(inclusion.prob)
+  inclusion.prob <- inclusion.prob[index]
+  # End from BoomSpikeSlab/bsts.
+  return(data.frame(predictor = names(inclusion.prob),
+                    inclusion.prob = inclusion.prob))
+}
+
+# Coeffi
+# Setup parallel backend
+cores <- detectCores()
+cl <- makeCluster(cores[1] - 1)
+registerDoParallel(cl)
+finalMatrix <- data.frame()
+
+
+# length(AllCounty)-1800
+finalMatrix <-
+  foreach(
+    ccount = 1:(length(AllCounty)),
+    .combine = rbind,
+    .packages = c("CausalImpact", "reshape2", "lattice", "ggplot2", "forecast")
+  ) %dopar%
+    {
+    eachstation <- AllCounty[ccount]
+    # eachstation <- 40440
+    # eachstation <- 40090
+    print(ccount)
+    dat_Each <- dat[dat$station_id == eachstation,]
+    rownames(dat_Each) <- NULL
+    first_enforce_day <- as.numeric(rownames(dat_Each[dat_Each$date == as.Date('2020-03-13'),]))
+    pre.period <- c(1, first_enforce_day - 1)
+    post.period <- c(first_enforce_day, nrow(dat_Each))
+    # We keep a copy of the actual observed response in "post.period.response
+    post.period.response <- dat_Each$rides[post.period[1]:post.period[2]]
+    dat_Each$rides[post.period[1]:post.period[2]] <- NA
+    response <- zoo(dat_Each$rides, dat_Each$date)
+    #plot(response)
+    # drop outliers
+    response_cl <- tsclean(response, replace.missing = TRUE, lambda = NULL)
+    response_cl[post.period[1]:post.period[2]] <- NA
+    response <- zoo(response_cl, dat_Each$date)
+    #plot(response1)
+
+    # Build a bsts model
+    ss <- AddSemilocalLinearTrend(list(), response)
+    ss <- AddSeasonal(ss, response, nseasons = 7)
+    ss <- AddMonthlyAnnualCycle(ss, response)
+    bsts.model1 <- bsts(
+      response ~ PRCP + TMAX + Holidays + IsWeekend,
+      state.specification = ss, niter = 2000, data = dat_Each)
+    #plot(bsts.model1, "coef")
+    # Estiamting counterfactual and compare with actual post period response
+    impact <- CausalImpact(
+      bsts.model = bsts.model1,
+      post.period.response = post.period.response)
+    #impact.plot <- plot(impact) +
+    #  theme_bw(base_size = 20) +
+    #  scale_x_date(date_breaks = "1 month", labels = date_format("%b-%Y"), limits = as.Date(c('2019-01-01', '2020-05-01')))
+    #GetInclusionProbabilities(bsts.model1)
+    components.withreg <- as.data.frame(bsts.model1$coefficients)
+    # Coefficient
+    #colMeans(bsts.model1$coefficients)
+    #plot(bsts.model1, "coef")
+    components.withreg$CTNAME <- eachstation
+    components.withreg
+    #write.csv(components.withreg, 'finalMatrix_Transit_temp.csv')
+  }
+
+stopCluster(cl)
+write.csv(finalMatrix, 'finalCoeff_Transit_0810.csv')
+
+# Causal impact
+
+# Setup parallel backend
+cores <- detectCores()
+cl <- makeCluster(cores[1] - 1)
+registerDoParallel(cl)
+finalMatrix <- data.frame()
+
+
+# length(AllCounty)-1800
+finalMatrix <-
+  foreach(
+    ccount = 1:(length(AllCounty)),
+    .combine = rbind,
+    .packages = c("CausalImpact", "reshape2", "lattice", "ggplot2", "forecast")
+  ) %dopar%
+    {
+    eachstation <- AllCounty[ccount]
+    # eachstation <- 40440
+    # eachstation <- 40090
+    print(ccount)
+    dat_Each <- dat[dat$station_id == eachstation,]
+    rownames(dat_Each) <- NULL
+    first_enforce_day <- as.numeric(rownames(dat_Each[dat_Each$date == as.Date('2020-03-13'),]))
+    pre.period <- c(1, first_enforce_day - 1)
+    post.period <- c(first_enforce_day, nrow(dat_Each))
+    # We keep a copy of the actual observed response in "post.period.response
+    post.period.response <- dat_Each$rides[post.period[1]:post.period[2]]
+    dat_Each$rides[post.period[1]:post.period[2]] <- NA
+    response <- zoo(dat_Each$rides, dat_Each$date)
+    #plot(response)
+    # drop outliers
+    response_cl <- tsclean(response, replace.missing = TRUE, lambda = NULL)
+    response_cl[post.period[1]:post.period[2]] <- NA
+    response <- zoo(response_cl, dat_Each$date)
+    #plot(response1)
+
+    # Build a bsts model
+    ss <- AddSemilocalLinearTrend(list(), response)
+    ss <- AddSeasonal(ss, response, nseasons = 7)
+    ss <- AddMonthlyAnnualCycle(ss, response)
+    bsts.model1 <- bsts(
+      response ~ PRCP + TMAX + Holidays + IsWeekend,
+      state.specification = ss, niter = 2000, data = dat_Each)
+    #plot(bsts.model1, "coef")
+    # Estiamting counterfactual and compare with actual post period response
+    impact <- CausalImpact(
+      bsts.model = bsts.model1,
+      post.period.response = post.period.response)
+    #summary(impact)
+    # plot(impact)
+    #summary(impact, "report")
+    components.withreg <- as.data.frame(impact$summary)
+    components.withreg$CTNAME <- eachstation
+    components.withreg
+    #write.csv(components.withreg, 'finalMatrix_Transit_temp.csv')
+  }
+
+stopCluster(cl)
+write.csv(finalMatrix, 'finalImpact_Transit_0810_old.csv')
+
