@@ -264,3 +264,63 @@ for axx in ax:
 plt.subplots_adjust(top=0.885, bottom=0.213, left=0.049, right=0.984, hspace=0.2, wspace=0.198)
 plt.savefig('Hist.png', dpi=600)
 plt.savefig('Hist.svg')
+
+# Impact
+Impact_OLD = pd.read_csv(r'finalImpact_Transit_0810_old.csv')
+Impact_OLD_AVG = Impact_OLD[::2]
+Impact_OLD_AVG.describe().T.to_csv('Impact_OLD_AVG.csv')
+Impact_OLD_AVG = Impact_OLD_AVG.rename({'CTNAME': 'station_id'}, axis=1)
+Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
+Impact_OLD_AVG = Impact_OLD_AVG.merge(Stations, on='station_id')
+Impact_OLD_AVG.to_csv('Impact_Sta_ARCGIS_NEW.csv')
+
+#
+# Impact_OLD = pd.read_csv(r'finalImpact_Transit_0810.csv')
+# Impact_OLD_AVG = Impact_OLD[::2]
+# Impact_OLD_AVG.describe().T.to_csv('Impact_NEW_AVG.csv')
+
+fig, ax = plt.subplots(figsize=(14, 4), nrows=1, ncols=4)
+sns.distplot(Impact_OLD_AVG['Actual'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred.lower'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred.upper'], ax=ax[0], hist=False)
+
+sns.distplot(Impact_OLD_AVG['AbsEffect'], ax=ax[1], hist=False)
+sns.distplot(Impact_OLD_AVG['AbsEffect.lower'], ax=ax[1], hist=False)
+sns.distplot(Impact_OLD_AVG['AbsEffect.upper'], ax=ax[1], hist=False)
+
+sns.distplot(Impact_OLD_AVG['RelEffect'], ax=ax[2], hist=False)
+sns.distplot(Impact_OLD_AVG['RelEffect.lower'], ax=ax[2], hist=False)
+sns.distplot(Impact_OLD_AVG['RelEffect.upper'], ax=ax[2], hist=False)
+
+sns.distplot(Impact_OLD_AVG['p'], ax=ax[3], hist=False)
+
+# Plot the station without causal impact
+# 40890
+jj = 40630
+myFmt = mdates.DateFormatter('%b-%d')
+Temp_time = Results_All[Results_All['CTNAME'] == jj]
+Temp_time = Temp_time[Temp_time['Date'] >= '2019-01-01']
+Temp_time.set_index('Date', inplace=True)
+fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 6.5), sharex=True)  # 12,9.5
+ax[0].plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'], color='#2f4c58')
+ax[0].plot(Temp_time.loc[Temp_time['Component'] == 'Predict', 'Value'], '--', color='#62760c', alpha=0.8)
+ax[0].fill_between(Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'].index,
+                   Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'],
+                   Temp_time.loc[Temp_time['Component'] == 'Predict_Upper', 'Value'], facecolor='#96bb7c',
+                   alpha=0.5)
+ax[1].plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'] - Temp_time.loc[
+    Temp_time['Component'] == 'Predict', 'Value'], color='#2f4c58')
+ax[1].fill_between(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'].index,
+                   Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'] - Temp_time.loc[
+                       Temp_time['Component'] == 'Predict_Upper', 'Value'],
+                   Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'] - Temp_time.loc[
+                       Temp_time['Component'] == 'Predict_Lower', 'Value'], facecolor='#96bb7c', alpha=0.5)
+ax[1].xaxis.set_major_formatter(myFmt)
+ax[1].xaxis.set_major_locator(mdates.WeekdayLocator(interval=4))
+ax[1].set_xlabel('Date')
+plt.xlim(xmin=min(Temp_time.index), xmax=max(Temp_time.index))
+for ax0 in ax:
+    ax0.axes.yaxis.set_visible(False)
+plt.tight_layout()
+plt.subplots_adjust(top=0.987, bottom=0.087, left=0.022, right=0.987, hspace=0.078, wspace=0.09)
