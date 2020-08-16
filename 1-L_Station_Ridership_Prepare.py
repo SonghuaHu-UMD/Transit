@@ -8,6 +8,7 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import matplotlib.dates as mdates
 
 os.chdir(r'D:\Transit')
 
@@ -53,7 +54,7 @@ cases.set_index('date', inplace=True)
 cases['cases'] = cases['cases'].diff()
 cases = cases.fillna(0)
 # cases.to_csv('cases_chicago.csv')
-
+'''
 # Plot time-varying figure
 All_ride = Daily_Lstaion.groupby('date').sum()['rides'].reset_index()
 All_ride.set_index('date', inplace=True)
@@ -91,7 +92,7 @@ mark_inset(ax, axins, loc1=3, loc2=1, fc="none", ec="#ff6d69", lw=2, ls='--')
 plt.subplots_adjust(top=0.951, bottom=0.088, left=0.067, right=0.987, hspace=0.225, wspace=0.2)
 plt.savefig('FIG1.png', dpi=600)
 plt.savefig('FIG1.svg')
-
+'''
 # Merge with weather and holidays
 # W=Weekday, A=Saturday, U=Sunday/Holiday
 Daily_Lstaion['Week'] = Daily_Lstaion['date'].dt.dayofweek
@@ -112,6 +113,7 @@ Stations['LAT'] = Stations['LAT'].astype(float)
 Stations['LNG'] = Stations['LNG'].astype(float)
 Stations = Stations.drop_duplicates(subset='station_id').reset_index(drop=True)
 
+'''
 # Merge with weather
 # Get the weather station info
 Station_raw = pd.read_csv(r'Weather\ghcnd-stations1.csv', header=None)
@@ -174,22 +176,26 @@ ALL_WEATHER['PRCP'] = ALL_WEATHER['PRCP'] * 0.1
 # plt.plot(ALL_WEATHER['TMIN'], 'ok', alpha=0.2)
 # plt.plot(All_Weather['PRCP'], 'ok', alpha=0.2)
 ALL_WEATHER.to_csv('All_Weather_2001_2020.csv')
+'''
+ALL_WEATHER = pd.read_csv(r'All_Weather_2001_2020.csv', index_col=0)
 ALL_WEATHER['date'] = pd.to_datetime(ALL_WEATHER['date'], format='%Y%m%d')
 
 # Merge with weather
 Daily_Lstaion_Final = Daily_Lstaion.merge(ALL_WEATHER, on=['station_id', 'date'], how='left')
 Daily_Lstaion_Final = Daily_Lstaion_Final.fillna(0)
+Daily_Lstaion_Final['Year'] = Daily_Lstaion_Final['date'].dt.year
 Daily_Lstaion_Final.isnull().sum()
 
-Daily_Lstaion_Final[['station_id', 'date', 'daytype', 'rides',
-                     'Week', 'IsWeekend', 'Holidays', 'PRCP', 'TMAX', 'TMIN']].to_csv(
+Daily_Lstaion_Final[
+    ['station_id', 'date', 'daytype', 'rides', 'Week', 'IsWeekend', 'Holidays', 'PRCP', 'TMAX', 'TMIN']].to_csv(
     'Daily_Lstaion_Final_0806.csv', index=False)
 
 # Output for arcgis
-Count_sta = Daily_Lstaion_Final[Daily_Lstaion_Final['Year'] == 2019].groupby(['station_id']).mean()[
-    ['rides']].reset_index()
+Count_sta = \
+    Daily_Lstaion_Final[(Daily_Lstaion_Final['Year'] == 2019) & (Daily_Lstaion_Final['daytype'] == 'W')].groupby(
+        ['station_id']).mean()[['rides']].reset_index()
 Stations = Stations.merge(Count_sta, on='station_id')
-Stations.to_csv('LStations_Chicago.csv')
+Stations.to_csv('LStations_Chicago_W.csv')
 
-Daily_Lstaion_Final = pd.read_csv(r'Daily_Lstaion_Final_0806.csv')
-Daily_Lstaion_Final.describe().T.to_csv('Desc_BSTS.csv')
+# Daily_Lstaion_Final = pd.read_csv(r'Daily_Lstaion_Final_0806.csv')
+# Daily_Lstaion_Final.describe().T.to_csv('Desc_BSTS.csv')

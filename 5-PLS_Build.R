@@ -70,7 +70,7 @@ plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
 df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
 # Calculate p-value
-m <- pls(x, y, 4, cv = 10, scale = TRUE)
+m <- pls(x, y, 4, cv = 10, scale = T)
 summary(m)
 summary(m$coeffs)
 
@@ -83,7 +83,7 @@ png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 
-m <- pls(x, y, 3, cv = 10, scale = TRUE, info = "Shoesize prediction model")
+m <- pls(x, y, 3, cv = 10, scale = T, info = "Shoesize prediction model")
 summary(m)
 summary(m$coeffs)
 

@@ -6,12 +6,12 @@
 * Daily_Lstaion_Final_0806.csv: Ridership+Weather, the input to build BSTS.
 * finalMatrix_Transit_0810.csv: Predict results from BSTS
 * finalCoeff_Transit_0810.csv: Coeff from BSTS
-* finalImpact_Transit_0810.csv: Causal Impact from BSTS
+* finalImpact_Transit_0810.csv: Causal Impact from BSTS [Describe impact based on this file]
 
 
 ### Data from 2015
 * Daily_Lstaion_Final.csv: Ridership+Weather, the input to build BSTS.
-* finalImpact_Transit_0810_old.csv: Causal Impact from BSTS [Describe impact based on this file]
+* finalImpact_Transit_0810_old.csv: Causal Impact from BSTS [Describe p-value of impact based on this file]
 * Impact_Sta.csv: impact of each station
 * All_final_Transit_R_0812.csv: features to build PLS
 
