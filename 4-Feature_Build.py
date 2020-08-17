@@ -353,3 +353,32 @@ sns.heatmap(corr_matr.corr(), annot=corr_p.values, fmt='',
 plt.tight_layout()
 plt.savefig('CORR.png', dpi=600)
 plt.savefig('CORR.svg')
+
+# Plot linear regression
+# #96bb7c
+plt.rcParams.update({'font.size': 20, 'font.family': "Times New Roman"})
+fig, ax = plt.subplots(nrows=2, ncols=4, figsize=(14, 6), sharex='col', sharey='row')
+sns.regplot(x=corr_matr['College Degree'], y=(corr_matr['Relative Impact']), color='#2f4c58',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][0])
+sns.regplot(x=corr_matr['Median Income'], y=(corr_matr['Relative Impact']), color='#2f4c58',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][1])
+sns.regplot(x=corr_matr['Race-White'], y=(corr_matr['Relative Impact']), color='#2f4c58',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][2])
+sns.regplot(x=corr_matr['Race-Black'], y=(corr_matr['Relative Impact']), color='#96bb7c',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][3])
+
+sns.regplot(x=corr_matr['College Degree'], y=(corr_matr['Ridership']), color='#96bb7c',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][0])
+sns.regplot(x=corr_matr['Median Income'], y=(corr_matr['Ridership']), color='#96bb7c',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][1])
+sns.regplot(x=corr_matr['Race-White'], y=(corr_matr['Ridership']), color='#96bb7c',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][2])
+sns.regplot(x=corr_matr['Race-Black'], y=(corr_matr['Ridership']), color='#2f4c58',
+            scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][3])
+for axx in [ax[0][1], ax[0][2], ax[0][3], ax[1][1], ax[1][2], ax[1][3]]:
+    axx.set_ylabel('')
+for axx in [ax[0][0], ax[0][2], ax[0][3], ax[0][1]]:
+    axx.set_xlabel('')
+plt.subplots_adjust(top=0.975, bottom=0.12, left=0.076, right=0.986, hspace=0.123, wspace=0.142)
+plt.savefig('CORR-SIN.png', dpi=600)
+plt.savefig('CORR-SIN.svg')

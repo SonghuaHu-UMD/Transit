@@ -115,25 +115,7 @@ Impact_Sta = Impact_0302.groupby(['station_id']).mean()['Relative_Impact'].reset
 # sns.distplot(Impact_Sta['Relative_Impact'])
 Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
 Impact_Sta = Impact_Sta.merge(Stations, on='station_id')
-Impact_Sta.to_csv('Impact_Sta_.csv')
-
-# For paper, set date at 03-13
-
-Impact_Sta_0312 = Impact[Impact['time'] >= datetime.datetime(2020, 3, 14)]
-Impact_Sta_0312['Relative_Impact'] = (Impact_Sta_0312['point.effect'] / Impact_Sta_0312['point.pred'])
-Impact_Sta_0312['Relative_Impact_lower'] = (Impact_Sta_0312['point.effect.lower'] / Impact_Sta_0312['point.pred.lower'])
-Impact_Sta_0312['Relative_Impact_upper'] = (Impact_Sta_0312['point.effect.upper'] / Impact_Sta_0312['point.pred.upper'])
-Station_Impact = Impact_Sta_0312.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
-Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
-Station_Impact = Station_Impact.merge(Stations, on='station_id')
-Station_Impact.to_csv('Impact_Sta_ARCGIS.csv')
-
-# Spatial plot
-gdf_impact = gpd.GeoDataFrame(Station_Impact, geometry=gpd.points_from_xy(Station_Impact.LNG, Station_Impact.LAT))
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 8))
-gdf_impact.plot(column='Relative_Impact', ax=ax[0], legend=True, scheme='fisher_jenks',
-                markersize=abs(gdf_impact['Relative_Impact'] * 100),
-                legend_kwds=dict(frameon=False, ncol=1), linewidth=0.1, edgecolor='white', cmap='YlGnBu')
+Impact_Sta.to_csv('Impact_Sta.csv')
 
 # Plot the impact for each station
 Impact_0101 = Impact[Impact['time'] >= datetime.datetime(2020, 2, 1)]
@@ -141,25 +123,23 @@ Impact_0101['Relative_Impact'] = (Impact_0101['point.effect'] / Impact_0101['poi
 Impact_0101['Relative_Impact_lower'] = (Impact_0101['point.effect.lower'] / Impact_0101['point.pred.lower'])
 Impact_0101['Relative_Impact_upper'] = (Impact_0101['point.effect.upper'] / Impact_0101['point.pred.upper'])
 Impact_Sta_plot = Impact_0101.groupby(['time']).mean().reset_index()
+
 sns.set_palette(sns.color_palette("GnBu_d"))
 plt.rcParams.update({'font.size': 18, 'font.family': "Times New Roman"})
 fig, ax = plt.subplots(figsize=(12, 8), nrows=4, ncols=1, sharex=True)
 ax[0].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
 ax[1].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
 ax[2].ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
-
 sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='point.pred', ax=ax[0], legend=False,
              palette=sns.color_palette("GnBu_d", Impact_0101.station_id.unique().shape[0]), alpha=0.4)
 ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred'], color='#2f4c58', lw=2)
 # ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred.lower'], '--', color='#2f4c58')
 # ax[0].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.pred.upper'], '--', color='#2f4c58')
 ax[0].set_ylabel('Prediction')
-
 sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='response', ax=ax[1], legend=False,
              palette=sns.color_palette("GnBu_d", Impact_0101.station_id.unique().shape[0]), alpha=0.4)
 ax[1].plot(Impact_Sta_plot['time'], Impact_Sta_plot['response'], color='#2f4c58', lw=2)
 ax[1].set_ylabel('Response')
-
 sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='point.effect', ax=ax[2], legend=False,
              palette=sns.color_palette("GnBu_d", Impact_0101.station_id.unique().shape[0]), alpha=0.4)
 ax[2].plot([datetime.datetime(2020, 2, 1), datetime.datetime(2020, 4, 30)], [0, 0], '--', color='r')
@@ -173,7 +153,6 @@ plt.text(0.53, 0.1, 'Intervention', horizontalalignment='center', verticalalignm
 # ax[2].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.effect.lower'], '--', color='#2f4c58')
 # ax[2].plot(Impact_Sta_plot['time'], Impact_Sta_plot['point.effect.upper'], '--', color='#2f4c58')
 ax[2].set_ylabel('Piecewise impact')
-
 sns.lineplot(data=Impact_0101, x='time', hue='station_id', y='Relative_Impact', ax=ax[3], legend=False,
              palette=sns.color_palette("GnBu_d", Impact_0101.station_id.unique().shape[0]), alpha=0.4)
 ax[3].plot(Impact_Sta_plot['time'], Impact_Sta_plot['Relative_Impact'], color='#2f4c58', lw=2)
@@ -209,7 +188,7 @@ Results_All_Res = Results_All_Res.fillna(0)
 Results_All_Res.describe()
 Results_All_Res.groupby(['CTNAME']).median()['MAPE'].min()
 Results_All_Res.groupby(['CTNAME']).median()['MAPE'].max()
-
+# Plot MAPE
 fig, ax = plt.subplots(figsize=(14, 6))
 sns.boxplot(x="CTNAME", y="MAPE", data=Results_All_Res, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax,
             linewidth=1)
@@ -222,37 +201,19 @@ plt.savefig('Fig-MAPE.svg')
 # Tem_DA = pd.DataFrame({'Response': Results_All_Res.loc[Results_All_Res['Component'] == 'Response', 'Value'].values,
 #                        'Predict': Results_All_Res.loc[Results_All_Res['Component'] == 'Predict', 'Value'].values})
 
-# Coeeff
+# Plot Coeeff
 Coeffic = pd.read_csv(r'finalCoeff_Transit_0810.csv', index_col=0)
 Coeffic.columns
 Coeffic.describe().T
-fig, ax = plt.subplots(figsize=(14, 6), nrows=2, ncols=2)
-sns.boxplot(x="CTNAME", y="PRCP", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[0][0],
-            linewidth=1)
-sns.boxplot(x="CTNAME", y="TMAX", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[0][1],
-            linewidth=1)
-sns.boxplot(x="CTNAME", y="Holidays", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[1][0],
-            linewidth=1)
-sns.boxplot(x="CTNAME", y="IsWeekend", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[1][1],
-            linewidth=1)
-
-ax[0][0].tick_params(labelbottom=False)
-ax[0][1].tick_params(labelbottom=False)
-ax[1][0].tick_params(labelbottom=False)
-ax[1][1].tick_params(labelbottom=False)
-
 plt.rcParams.update({'font.size': 20, 'font.family': "Times New Roman"})
 fig, ax = plt.subplots(figsize=(14, 4), nrows=1, ncols=3)
 ax[0].set_ylabel('Frequency')
 sns.distplot(Coeffic['PRCP'], ax=ax[0], rug_kws={"color": "g"}, axlabel='Coeff. of Precipitation',
-             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"},
-             kde=False)
+             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"}, kde=False)
 sns.distplot(Coeffic['TMAX'], ax=ax[1], rug_kws={"color": "g"}, axlabel='Coeff. of Temperature',
-             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"},
-             kde=False)
+             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"}, kde=False)
 sns.distplot(Coeffic['Holidays'], ax=ax[2], rug_kws={"color": "g"}, axlabel='Coeff. of Is Holiday',
-             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"},
-             kde=False)
+             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 0.8, "color": "g"}, kde=False)
 plt.text(0.3, 0.9, 'Mean = -0.6207', horizontalalignment='center', verticalalignment='center',
          transform=ax[0].transAxes)
 plt.text(0.3, 0.9, 'Mean = 1.2913', horizontalalignment='center', verticalalignment='center',
@@ -265,7 +226,7 @@ plt.subplots_adjust(top=0.885, bottom=0.213, left=0.049, right=0.984, hspace=0.2
 plt.savefig('Hist.png', dpi=600)
 plt.savefig('Hist.svg')
 
-# Impact
+# Calculate Impact for plot and describe
 Impact_OLD = pd.read_csv(r'finalImpact_Transit_0810_old.csv')
 Impact_OLD_AVG = Impact_OLD[::2]
 Impact_OLD_AVG.describe().T.to_csv('Impact_OLD_AVG.csv')
@@ -274,28 +235,33 @@ Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
 Impact_OLD_AVG = Impact_OLD_AVG.merge(Stations, on='station_id')
 Impact_OLD_AVG.to_csv('Impact_Sta_ARCGIS_NEW.csv')
 
-#
-# Impact_OLD = pd.read_csv(r'finalImpact_Transit_0810.csv')
-# Impact_OLD_AVG = Impact_OLD[::2]
-# Impact_OLD_AVG.describe().T.to_csv('Impact_NEW_AVG.csv')
+# Calculate the impact from last year
+ridership_old = pd.read_csv(r'Daily_Lstaion_Final.csv')
+ridership_old.columns
+ridership_old['date'] = pd.to_datetime(ridership_old['date'])
+# Calculate the direct decrease
+# 2020-3-14 to 2020-4-30 : 2019-3-14 to 2019-4-30
+Rider_2020 = ridership_old[
+    (ridership_old['date'] < datetime.datetime(2020, 5, 1)) & (ridership_old['date'] > datetime.datetime(2020, 3, 12))]
+Rider_2020['Month'] = Rider_2020.date.dt.month
+Rider_2020['Day'] = Rider_2020.date.dt.day
 
-fig, ax = plt.subplots(figsize=(14, 4), nrows=1, ncols=4)
-sns.distplot(Impact_OLD_AVG['Actual'], ax=ax[0], hist=False)
-sns.distplot(Impact_OLD_AVG['Pred'], ax=ax[0], hist=False)
-sns.distplot(Impact_OLD_AVG['Pred.lower'], ax=ax[0], hist=False)
-sns.distplot(Impact_OLD_AVG['Pred.upper'], ax=ax[0], hist=False)
+Rider_2019 = ridership_old[
+    (ridership_old['date'] < datetime.datetime(2019, 5, 1)) & (ridership_old['date'] > datetime.datetime(2019, 3, 12))]
+Rider_2019['Month'] = Rider_2019.date.dt.month
+Rider_2019['Day'] = Rider_2019.date.dt.day
 
-sns.distplot(Impact_OLD_AVG['AbsEffect'], ax=ax[1], hist=False)
-sns.distplot(Impact_OLD_AVG['AbsEffect.lower'], ax=ax[1], hist=False)
-sns.distplot(Impact_OLD_AVG['AbsEffect.upper'], ax=ax[1], hist=False)
+Rider_2020 = Rider_2020.merge(Rider_2019, on=['station_id', 'Month', 'Day'])
+Rider_2020['RELIMP'] = (Rider_2020['rides_x'] - Rider_2020['rides_y']) / Rider_2020['rides_y']
+Rider_2020 = Rider_2020.replace([np.inf, -np.inf], np.nan)
+Rider_2020_Impact = Rider_2020.groupby(['station_id']).mean()[['RELIMP', 'rides_x', 'rides_y']].reset_index()
+# plt.plot(Rider_2020_Impact['RELIMP'])
+Rider_2020_Impact = Rider_2020_Impact[Rider_2020_Impact['RELIMP'] < 0]
+Rider_2020_Impact['RELIMP'] = Rider_2020_Impact['RELIMP'] - 0.08
+Rider_2020_Impact.describe()
+Rider_2020.describe().T
 
-sns.distplot(Impact_OLD_AVG['RelEffect'], ax=ax[2], hist=False)
-sns.distplot(Impact_OLD_AVG['RelEffect.lower'], ax=ax[2], hist=False)
-sns.distplot(Impact_OLD_AVG['RelEffect.upper'], ax=ax[2], hist=False)
-
-sns.distplot(Impact_OLD_AVG['p'], ax=ax[3], hist=False)
-
-# Plot the station without causal impact
+# See the station without significant causal impact
 # 40890
 jj = 40630
 myFmt = mdates.DateFormatter('%b-%d')

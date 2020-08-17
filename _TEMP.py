@@ -243,3 +243,50 @@ sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Predict', ax=ax[0]
 sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Response', ax=ax[1], legend=False)
 sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='Effect', ax=ax[2], legend=False)
 sns.lineplot(data=Impact_0302, x='Date', hue='station_id', y='REffect', ax=ax[3], legend=False)
+
+# Spatial plot
+gdf_impact = gpd.GeoDataFrame(Station_Impact, geometry=gpd.points_from_xy(Station_Impact.LNG, Station_Impact.LAT))
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(14, 8))
+gdf_impact.plot(column='Relative_Impact', ax=ax[0], legend=True, scheme='fisher_jenks',
+                markersize=abs(gdf_impact['Relative_Impact'] * 100),
+                legend_kwds=dict(frameon=False, ncol=1), linewidth=0.1, edgecolor='white', cmap='YlGnBu')
+
+fig, ax = plt.subplots(figsize=(14, 6), nrows=2, ncols=2)
+sns.boxplot(x="CTNAME", y="PRCP", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[0][0],
+            linewidth=1)
+sns.boxplot(x="CTNAME", y="TMAX", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[0][1],
+            linewidth=1)
+sns.boxplot(x="CTNAME", y="Holidays", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[1][0],
+            linewidth=1)
+sns.boxplot(x="CTNAME", y="IsWeekend", data=Coeffic, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax[1][1],
+            linewidth=1)
+ax[0][0].tick_params(labelbottom=False)
+ax[0][1].tick_params(labelbottom=False)
+ax[1][0].tick_params(labelbottom=False)
+ax[1][1].tick_params(labelbottom=False)
+
+# For paper, to calculate the impact, set date at 03-13
+Impact_Sta_0312 = Impact[Impact['time'] >= datetime.datetime(2020, 3, 14)]
+Impact_Sta_0312['Relative_Impact'] = (Impact_Sta_0312['point.effect'] / Impact_Sta_0312['point.pred'])
+Impact_Sta_0312['Relative_Impact_lower'] = (Impact_Sta_0312['point.effect.lower'] / Impact_Sta_0312['point.pred.lower'])
+Impact_Sta_0312['Relative_Impact_upper'] = (Impact_Sta_0312['point.effect.upper'] / Impact_Sta_0312['point.pred.upper'])
+Station_Impact = Impact_Sta_0312.groupby(['station_id']).mean()['Relative_Impact'].reset_index()
+Stations = pd.read_csv('LStations_Chicago.csv', index_col=0)
+Station_Impact = Station_Impact.merge(Stations, on='station_id')
+Station_Impact.to_csv('Impact_Sta_ARCGIS.csv')  # use for arcgis
+
+fig, ax = plt.subplots(figsize=(14, 4), nrows=1, ncols=4)
+sns.distplot(Impact_OLD_AVG['Actual'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred.lower'], ax=ax[0], hist=False)
+sns.distplot(Impact_OLD_AVG['Pred.upper'], ax=ax[0], hist=False)
+
+sns.distplot(Impact_OLD_AVG['AbsEffect'], ax=ax[1], hist=False)
+sns.distplot(Impact_OLD_AVG['AbsEffect.lower'], ax=ax[1], hist=False)
+sns.distplot(Impact_OLD_AVG['AbsEffect.upper'], ax=ax[1], hist=False)
+
+sns.distplot(Impact_OLD_AVG['RelEffect'], ax=ax[2], hist=False)
+sns.distplot(Impact_OLD_AVG['RelEffect.lower'], ax=ax[2], hist=False)
+sns.distplot(Impact_OLD_AVG['RelEffect.upper'], ax=ax[2], hist=False)
+
+sns.distplot(Impact_OLD_AVG['p'], ax=ax[3], hist=False)

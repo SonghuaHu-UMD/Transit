@@ -44,6 +44,7 @@ Daily_Lstaion = Daily_Lstaion.set_index('date').groupby(['station_id']).resample
     ['rides', 'daytype']].asfreq().reset_index()
 Daily_Lstaion = Daily_Lstaion.sort_values(by=['station_id', 'date'])
 
+
 # Read cases
 cases = pd.read_csv(r'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
 cases_0430 = cases[cases['date'] == '2020-04-30']

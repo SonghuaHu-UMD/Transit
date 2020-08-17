@@ -200,8 +200,6 @@ cores <- detectCores()
 cl <- makeCluster(cores[1] - 1)
 registerDoParallel(cl)
 finalMatrix <- data.frame()
-
-
 # length(AllCounty)-1800
 finalMatrix <-
   foreach(
