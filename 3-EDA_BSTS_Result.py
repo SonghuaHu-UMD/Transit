@@ -25,20 +25,20 @@ for jj in set(Results_All['CTNAME']):
 
     fig, ax = plt.subplots(nrows=6, ncols=1, figsize=(11, 9.5), sharex=True)  # 12,9.5
     # ax[0].set_title('Station_ID: ' + str(jj))
-    ax[0].plot(Temp_time.loc[Temp_time['Component'] == 'Trend', 'Value'], color='#2f4c58', alpha=0.6)
+    ax[0].plot(Temp_time.loc[Temp_time['Component'] == 'Trend', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
     ax[0].set_ylabel('Trend')
 
-    ax[1].plot(Temp_time.loc[Temp_time['Component'] == 'Seasonality', 'Value'], color='#2f4c58', alpha=0.6)
+    ax[1].plot(Temp_time.loc[Temp_time['Component'] == 'Seasonality', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
     ax[1].set_ylabel('Weekly')
 
-    ax[2].plot(Temp_time.loc[Temp_time['Component'] == 'Monthly', 'Value'], color='#2f4c58', alpha=0.6)
+    ax[2].plot(Temp_time.loc[Temp_time['Component'] == 'Monthly', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
     ax[2].set_ylabel('Monthly')
 
-    ax[3].plot(Temp_time.loc[Temp_time['Component'] == 'Regression', 'Value'], color='#2f4c58', alpha=0.6)
+    ax[3].plot(Temp_time.loc[Temp_time['Component'] == 'Regression', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
     ax[3].set_ylabel('Covariates')
 
-    ax[4].plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'], color='#2f4c58', alpha=0.6)
-    ax[4].plot(Temp_time.loc[Temp_time['Component'] == 'Predict', 'Value'], '--', color='#62760c', alpha=0.6, lw=0.5)
+    ax[4].plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
+    ax[4].plot(Temp_time.loc[Temp_time['Component'] == 'Predict', 'Value'], '--', color='#62760c', alpha=0.7, lw=0.5)
     ax[4].fill_between(Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'].index,
                        Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'],
                        Temp_time.loc[Temp_time['Component'] == 'Predict_Upper', 'Value'], facecolor='#96bb7c',
@@ -46,7 +46,7 @@ for jj in set(Results_All['CTNAME']):
     ax[4].set_ylabel('Prediction')
 
     ax[5].plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'] - Temp_time.loc[
-        Temp_time['Component'] == 'Predict', 'Value'], color='#2f4c58', alpha=0.6)
+        Temp_time['Component'] == 'Predict', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
     ax[5].fill_between(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'].index,
                        Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'] - Temp_time.loc[
                            Temp_time['Component'] == 'Predict_Upper', 'Value'],
@@ -59,9 +59,9 @@ for jj in set(Results_All['CTNAME']):
     # for axx in ax:
     #     axx.ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=False)
     # fig.autofmt_xdate()
-    plt.tight_layout()
     plt.subplots_adjust(top=0.987, bottom=0.087, left=0.127, right=0.982, hspace=0.078, wspace=0.09)
     # plt.savefig('FIG2-1.png', dpi=600)
+    # plt.savefig('FIG2-1.svg')
     plt.savefig(r'D:\Transit\Full_Time_Figure\Full_Time_Range_' + str(jj) + 'png', dpi=500)
     plt.close()
 
@@ -98,6 +98,7 @@ for ax0 in ax:
 plt.tight_layout()
 plt.subplots_adjust(top=0.987, bottom=0.087, left=0.022, right=0.987, hspace=0.078, wspace=0.09)
 plt.savefig('FIG2-2.png', dpi=600)
+plt.savefig('FIG2-2.svg')
 
 # Calculate the casual impact
 # For build the PLS model

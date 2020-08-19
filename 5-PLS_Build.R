@@ -59,6 +59,9 @@ loading.weights(PLSR_)
 png('Figure/NCOM-1.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
+svg('Figure/NCOM-1.svg', width = 5, height = 5)
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+dev.off()
 #ggsave("1-NOCOM.png", units = "in", width = 3.1, height = 3, dpi = 600)
 
 # Check model
@@ -80,6 +83,9 @@ PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # me
 summary(PLSR_)
 loading.weights(PLSR_)
 png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+dev.off()
+svg('Figure/NCOM-2.svg', width = 5, height = 5)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 
