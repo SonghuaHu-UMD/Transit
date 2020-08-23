@@ -15,6 +15,32 @@ Results_All['Date'] = pd.to_datetime(Results_All['Date'])
 # plt.rcParams["font.family"] = "Times New Roman"
 plt.rcParams.update({'font.size': 24, 'font.family': "Times New Roman"})
 
+# Plot year trend
+Results_All['Year'] = Results_All['Date'].dt.year
+Temp_time = Results_All.groupby(['Year', 'Component', 'CTNAME']).mean().reset_index()
+fig, ax = plt.subplots(figsize=(8, 6))
+sns.lineplot(data=Temp_time[Temp_time['Component'] == 'Trend'], x='Year', hue='CTNAME', y='Value', ax=ax, legend=False,
+             palette=sns.color_palette("GnBu_d", Temp_time.CTNAME.unique().shape[0]), alpha=0.4)
+ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0), useMathText=True)
+plt.ylabel('Trend')
+plt.tight_layout()
+plt.savefig('FIGN-2.png', dpi=600)
+plt.savefig('FIGN-2.svg')
+
+fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(16, 6), sharex=True)  # 12,9.5
+for jj in set(Results_All['CTNAME']):
+    print(jj)
+    # jj = 40930
+    myFmt = mdates.DateFormatter('%Y')
+    Temp_time = Results_All[Results_All['CTNAME'] == jj]
+    Temp_time['Year'] = Temp_time['Date'].dt.year
+    Temp_time = Temp_time.groupby(['Year', 'Component']).mean().reset_index()
+    # Temp_time = Temp_time[Temp_time['Date'] >= '2019-01-01']
+    # ax[0].set_title('Station_ID: ' + str(jj))
+    ax.plot(Temp_time.loc[Temp_time['Component'] == 'Trend', 'Value'] / max(
+        Temp_time.loc[Temp_time['Component'] == 'Trend', 'Value']), color='#2f4c58', alpha=0.7, lw=2)
+    ax.set_ylabel('Trend')
+
 for jj in set(Results_All['CTNAME']):
     print(jj)
     # jj = 40930
@@ -189,6 +215,7 @@ Results_All_Res = Results_All_Res.fillna(0)
 Results_All_Res.describe()
 Results_All_Res.groupby(['CTNAME']).median()['MAPE'].min()
 Results_All_Res.groupby(['CTNAME']).median()['MAPE'].max()
+Results_All_Res.groupby(['CTNAME']).median()['MAPE'].mean()
 # Plot MAPE
 fig, ax = plt.subplots(figsize=(14, 6))
 sns.boxplot(x="CTNAME", y="MAPE", data=Results_All_Res, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax,
@@ -261,6 +288,29 @@ Rider_2020_Impact = Rider_2020_Impact[Rider_2020_Impact['RELIMP'] < 0]
 Rider_2020_Impact['RELIMP'] = Rider_2020_Impact['RELIMP'] - 0.08
 Rider_2020_Impact.describe()
 Rider_2020.describe().T
+
+# Compare with inferred impact
+Impact_OLD_AVG.rename({'CTNAME': 'station_id'}, axis=1, inplace=True)
+Rider_2020_Impact = Rider_2020_Impact.merge(Impact_OLD_AVG, on='station_id')
+Rider_2020_Impact['ABS_diff'] = abs(Rider_2020_Impact['RelEffect'] - Rider_2020_Impact['RELIMP'])
+# plt.plot(Rider_2020_Impact['RelEffect'], Rider_2020_Impact['RELIMP'], 'o')
+# plt.plot(Rider_2020_Impact.loc[Rider_2020_Impact['p'] > 0.1, 'RelEffect'],
+#          Rider_2020_Impact.loc[Rider_2020_Impact['p'] > 0.1, 'RELIMP'], 'o')
+np.corrcoef(Rider_2020_Impact['RelEffect'], Rider_2020_Impact['RELIMP'])
+fig, ax = plt.subplots(figsize=(8, 6))
+sns.regplot(x=Rider_2020_Impact['RelEffect'], y=(Rider_2020_Impact['RELIMP']), color='#2f4c58',
+            scatter_kws={'s': (Rider_2020_Impact['rides_y'] / 50), 'alpha': 0.5}, ax=ax)
+tem = Rider_2020_Impact[
+    Rider_2020_Impact['station_id'].isin([41420, 40890, 41000, 41030, 40160, 40030, 40730])].reset_index()
+plt.scatter(tem['RelEffect'], tem['RELIMP'], alpha=0.5, s=tem['rides_y'] / 50, color='green')
+ax.set_xlim([-1.05, -0.4])
+ax.set_ylim([-1.05, -0.4])
+ax.set_ylabel('Relative Decrease (Baseline:2019)')
+ax.set_xlabel('Relative Effect')
+plt.tight_layout()
+plt.savefig('Compare.png', dpi=600)
+plt.savefig('Compare.svg')
+Rider_2020_Impact.to_csv('Rider_2020_Impact_compare.csv')
 
 # See the station without significant causal impact
 # 40890

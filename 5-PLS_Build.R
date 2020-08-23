@@ -14,7 +14,8 @@ library(pls)
 
 # Read data
 #dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
-dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
+#dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
+dat <- read.csv('D:/Transit/All_final_Transit_R_0822.csv')
 dat$rides <- round(dat$rides)
 
 vif_test <-
@@ -44,9 +45,10 @@ vif(vif_test)
 summary(vif_test)
 
 # PLS
+# Cumu_Cases_Rate, Cumu_Death_Rate,
 x <- dat %>%
   dplyr::select(COMMERCIAL, INDUSTRIAL, INSTITUTIONAL, OPENSPACE, RESIDENTIAL, LUM,
-                Cumu_Cases, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
+                Cumu_Cases, Cumu_Death, Pct.Male, Pct.Age_0_24, Pct.Age_25_40, Pct.Age_40_65,
                 Pct.White, Pct.Black, Income, College, Pct.WJob_Goods_Product, Pct.WJob_Utilities, WTotal_Job_Density,
                 PopDensity, Num_trips, Freq,) %>%
   data.matrix()
@@ -90,6 +92,15 @@ ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
 
 m <- pls(x, y, 3, cv = 10, scale = T, info = "Shoesize prediction model")
+summary(m)
+summary(m$coeffs)
+
+# For relative
+y <- dat$RELIMP
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
+ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
+
+m <- pls(x, y, 5, cv = 10, scale = T, info = "Shoesize prediction model")
 summary(m)
 summary(m$coeffs)
 

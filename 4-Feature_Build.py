@@ -127,8 +127,11 @@ Num_Cases['Diff_Start'] = (Num_Cases['Week Start'] - datetime.datetime(2020, 4, 
 # Find the max negative
 Num_Cases_Neg = Num_Cases[Num_Cases['Diff_Start'] <= 0]
 Num_Cases_Cum = Num_Cases_Neg.groupby(['ZIP Code']).tail(1)
-Num_Cases_Cum = Num_Cases_Cum[['ZIP Code', 'Cases - Cumulative']]
-Num_Cases_Cum.columns = ['ZIP_CODE', 'Cumu_Cases']
+Num_Cases_Cum = Num_Cases_Cum[['ZIP Code', 'Cases - Cumulative', 'Deaths - Cumulative', 'Population']]
+Num_Cases_Cum.columns = ['ZIP_CODE', 'Cumu_Cases', 'Cumu_Death', 'Population']
+Num_Cases_Cum['Cumu_Cases_Rate'] = Num_Cases_Cum['Cumu_Cases'] / Num_Cases_Cum['Population']
+Num_Cases_Cum['Cumu_Death_Rate'] = Num_Cases_Cum['Cumu_Death'] / Num_Cases_Cum['Population']
+Num_Cases_Cum = Num_Cases_Cum.drop(['Population'], axis=1)
 Num_Cases_Cum.to_csv('Num_Cases_Cum.csv')
 StationZIP = StationZIP.merge(Num_Cases_Cum, on='ZIP_CODE', how='left')
 StationZIP = StationZIP.fillna(0)
@@ -245,9 +248,10 @@ All_final.describe().T
 All_final['PopDensity'] = (All_final['Total_Population'] / 1e3) / All_final['AREA']
 All_final['Income'] = All_final['Income'] / 1e3
 All_final['Cumu_Cases'] = All_final['Cumu_Cases'] / 1e3
+All_final['Cumu_Death'] = All_final['Cumu_Death'] / 1e3
 All_final['EmployDensity'] = (All_final['Employed'] / 1e3) / All_final['AREA']
 # Output
-All_final.to_csv('D:\Transit\Features_Transit_0805.csv')
+All_final.to_csv('D:\Transit\Features_Transit_0822.csv')
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
 
 ################## Calculate all land use/socio-demograhic/road/cases related features ##############################
@@ -275,7 +279,7 @@ def calculate_pvalues(df):
 os.chdir(r'D:\Transit')
 # Ride_C = pd.read_csv(r'LStations_Chicago.csv', index_col=0)
 Impact_C = pd.read_csv(r'Impact_Sta.csv', index_col=0)
-Features = pd.read_csv(r'Features_Transit_0805.csv', index_col=0)
+Features = pd.read_csv(r'Features_Transit_0822.csv', index_col=0)
 dfs = [Impact_C, Features]
 All_final = reduce(lambda left, right: pd.merge(left, right, on='station_id'), dfs)
 All_final.describe().T
@@ -307,34 +311,61 @@ No_Trips_2 = No_Trips.groupby(['parent_station']).mean()['Freq'].reset_index()
 No_Fre_Trips = No_Trips_1.merge(No_Trips_2, on='parent_station')
 No_Fre_Trips.columns = ['station_id', 'Num_trips', 'Freq']
 
+# Calculate the decrease based on 2019
+# Calculate the impact from last year
+ridership_old = pd.read_csv(r'Daily_Lstaion_Final.csv')
+ridership_old.columns
+ridership_old['date'] = pd.to_datetime(ridership_old['date'])
+# Calculate the direct decrease
+# 2020-3-14 to 2020-4-30 : 2019-3-14 to 2019-4-30
+Rider_2020 = ridership_old[
+    (ridership_old['date'] < datetime.datetime(2020, 5, 1)) & (ridership_old['date'] > datetime.datetime(2020, 3, 12))]
+Rider_2020['Month'] = Rider_2020.date.dt.month
+Rider_2020['Day'] = Rider_2020.date.dt.day
+
+Rider_2019 = ridership_old[
+    (ridership_old['date'] < datetime.datetime(2019, 5, 1)) & (ridership_old['date'] > datetime.datetime(2019, 3, 12))]
+Rider_2019['Month'] = Rider_2019.date.dt.month
+Rider_2019['Day'] = Rider_2019.date.dt.day
+
+Rider_2020 = Rider_2020.merge(Rider_2019, on=['station_id', 'Month', 'Day'])
+Rider_2020['RELIMP'] = (Rider_2020['rides_x'] - Rider_2020['rides_y']) / Rider_2020['rides_y']
+Rider_2020 = Rider_2020.replace([np.inf, -np.inf], np.nan)
+Rider_2020_Impact = Rider_2020.groupby(['station_id']).mean()[['RELIMP', 'rides_x', 'rides_y']].reset_index()
+Rider_2020_Impact = Rider_2020_Impact[Rider_2020_Impact['RELIMP'] < 0]
+Rider_2020_Impact.describe()
+Rider_2020_Impact = Rider_2020_Impact[['station_id', 'RELIMP']]
+
 # Merge all in one matrix
 All_final = All_final.merge(No_Fre_Trips, on='station_id')
+All_final = All_final.merge(Rider_2020_Impact, on='station_id', how='left')
+All_final.loc[All_final['RELIMP'].isna(), 'RELIMP'] = All_final.loc[All_final['RELIMP'].isna(), 'Relative_Impact']
+# plt.plot(All_final['Relative_Impact'],All_final['RELIMP'])
 # Change unit
 All_final['Num_trips'] = All_final['Num_trips'] / 1e3
 All_final['rides'] = All_final['rides'] / 1e3
 All_final.describe().T
-# All_final.to_csv('All_final_Transit_R_0812.csv')
+# All_final.to_csv('All_final_Transit_R_0822.csv')
 
 
 # PLOT CORR
-corr_matr = All_final[['Relative_Impact', 'rides', 'COMMERCIAL', 'INDUSTRIAL',
-                       'INSTITUTIONAL', 'OPENSPACE', 'RESIDENTIAL', 'LUM',
-                       'Cumu_Cases', 'Pct.Male', 'Pct.Age_0_24', 'Pct.Age_25_40',
-                       'Pct.Age_40_65', 'Pct.White', 'Pct.Black',
-                       'Income', 'College', 'Pct.WJob_Goods_Product',
-                       'Pct.WJob_Utilities', 'Pct.WJob_OtherServices', 'WTotal_Job_Density',
-                       'PopDensity', 'Num_trips', 'Freq']]
+corr_matr = All_final[
+    ['Relative_Impact', 'rides', 'RELIMP', 'COMMERCIAL', 'INDUSTRIAL', 'INSTITUTIONAL', 'OPENSPACE', 'RESIDENTIAL',
+     'LUM', 'Cumu_Cases', 'Cumu_Death', 'Cumu_Cases_Rate', 'Cumu_Death_Rate', 'Pct.Male', 'Pct.Age_0_24',
+     'Pct.Age_25_40', 'Pct.Age_40_65', 'Pct.White', 'Pct.Black', 'Income', 'College', 'Pct.WJob_Goods_Product',
+     'Pct.WJob_Utilities', 'Pct.WJob_OtherServices', 'WTotal_Job_Density', 'PopDensity', 'Num_trips', 'Freq']]
 # corr_matr['Relative_Impact'] = -corr_matr['Relative_Impact']
-corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'COMMERCIAL': 'Commercial',
-                  'INDUSTRIAL': 'Industrial', 'INSTITUTIONAL': 'Institutional', 'OPENSPACE': 'Open space',
-                  'RESIDENTIAL': 'Residential', 'Cumu_Cases': 'Cases', 'Pct.Male': 'Male',
-                  'Pct.Age_0_24': 'Age-0_24', 'Pct.Age_25_40': 'Age-25_40',
-                  'Pct.Age_40_65': 'Age-40_65', 'Pct.White': 'Race-White', 'Pct.Black': 'Race-Black',
-                  'Income': 'Median Income',
-                  'College': 'College Degree', 'Pct.WJob_Goods_Product': 'Job-Goods',
-                  'Pct.WJob_Utilities': 'Job-Utilities', 'Pct.WJob_OtherServices': 'Job-Others',
-                  'WTotal_Job_Density': 'Job Density', 'PopDensity': 'Population Density',
-                  'Num_trips': 'Trips', 'Freq': 'Transit Frequency'}, axis=1, inplace=True)
+corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'RELIMP': 'Relative Decline',
+                  'COMMERCIAL': 'Commercial', 'INDUSTRIAL': 'Prop. Industrial', 'INSTITUTIONAL': 'Prop. Institutional',
+                  'OPENSPACE': 'Prop. Open space', 'RESIDENTIAL': 'Prop. Residential', 'Cumu_Cases': 'Cases',
+                  'Cumu_Death': 'Death', 'Cumu_Cases_Rate': 'Cases_Rate', 'Cumu_Death_Rate': 'Death_Rate',
+                  'Pct.Male': 'Prop. Male', 'Pct.Age_0_24': 'Prop. Age-0_24', 'Pct.Age_25_40': 'Prop. Age-25_40',
+                  'Pct.Age_40_65': 'Prop. Age-40_65', 'Pct.White': 'Prop. Race-White', 'Pct.Black': 'Prop. Race-Black',
+                  'Income': 'Median Income', 'College': 'Prop. College Degree',
+                  'Pct.WJob_Goods_Product': 'Prop. Job-Goods', 'Pct.WJob_Utilities': 'Prop. Job-Utilities',
+                  'Pct.WJob_OtherServices': 'Prop. Job-Others', 'WTotal_Job_Density': 'Job Density',
+                  'PopDensity': 'Population Density', 'Num_trips': 'Trips', 'Freq': 'Transit Frequency'}, axis=1,
+                 inplace=True)
 corr_matr.describe().T.to_csv('Describe.csv')
 corr_matr.corr().to_csv('Corr.csv')
 corr_p = calculate_pvalues(corr_matr)
@@ -359,9 +390,9 @@ plt.savefig('CORR.svg')
 # #96bb7c
 plt.rcParams.update({'font.size': 20, 'font.family': "Times New Roman"})
 fig, ax = plt.subplots(nrows=2, ncols=4, figsize=(14, 6), sharex='col', sharey='row')
-sns.regplot(x=corr_matr['College Degree'], y=(corr_matr['Relative Impact']), color='#2f4c58',
+sns.regplot(x=corr_matr['Prop. College Degree'], y=(corr_matr['Relative Impact']), color='#2f4c58',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][0])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['College Degree'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. College Degree'],
                                                                      y=corr_matr['Relative Impact'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[0][0].transAxes)
@@ -373,23 +404,23 @@ slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[0][1].transAxes)
 
-sns.regplot(x=corr_matr['Race-White'], y=(corr_matr['Relative Impact']), color='#2f4c58',
+sns.regplot(x=corr_matr['Prop. Race-White'], y=(corr_matr['Relative Impact']), color='#2f4c58',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][2])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Race-White'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. Race-White'],
                                                                      y=corr_matr['Relative Impact'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[0][2].transAxes)
 
-sns.regplot(x=corr_matr['Race-Black'], y=(corr_matr['Relative Impact']), color='#96bb7c',
+sns.regplot(x=corr_matr['Prop. Race-Black'], y=(corr_matr['Relative Impact']), color='#96bb7c',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[0][3])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Race-Black'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. Race-Black'],
                                                                      y=corr_matr['Relative Impact'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[0][3].transAxes)
 
-sns.regplot(x=corr_matr['College Degree'], y=(corr_matr['Ridership']), color='#96bb7c',
+sns.regplot(x=corr_matr['Prop. College Degree'], y=(corr_matr['Ridership']), color='#96bb7c',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][0])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['College Degree'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. College Degree'],
                                                                      y=corr_matr['Ridership'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[1][0].transAxes)
@@ -401,16 +432,16 @@ slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[1][1].transAxes)
 
-sns.regplot(x=corr_matr['Race-White'], y=(corr_matr['Ridership']), color='#96bb7c',
+sns.regplot(x=corr_matr['Prop. Race-White'], y=(corr_matr['Ridership']), color='#96bb7c',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][2])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Race-White'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. Race-White'],
                                                                      y=corr_matr['Ridership'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[1][2].transAxes)
 
-sns.regplot(x=corr_matr['Race-Black'], y=(corr_matr['Ridership']), color='#2f4c58',
+sns.regplot(x=corr_matr['Prop. Race-Black'], y=(corr_matr['Ridership']), color='#2f4c58',
             scatter_kws={'s': (corr_matr['Ridership'] * 6), 'alpha': 0.5}, ax=ax[1][3])
-slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Race-Black'],
+slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x=corr_matr['Prop. Race-Black'],
                                                                      y=corr_matr['Ridership'])
 plt.text(0.7, 0.9, '$R^2 = $' + str(round(r_value ** 2, 3)), horizontalalignment='center',
          verticalalignment='center', transform=ax[1][3].transAxes)
@@ -420,5 +451,5 @@ for axx in [ax[0][1], ax[0][2], ax[0][3], ax[1][1], ax[1][2], ax[1][3]]:
 for axx in [ax[0][0], ax[0][2], ax[0][3], ax[0][1]]:
     axx.set_xlabel('')
 plt.subplots_adjust(top=0.975, bottom=0.12, left=0.076, right=0.986, hspace=0.123, wspace=0.142)
-plt.savefig('CORR-SIN.png', dpi=600)
-plt.savefig('CORR-SIN.svg')
+plt.savefig('CORR-Linear.png', dpi=600)
+plt.savefig('CORR-Linear.svg')
