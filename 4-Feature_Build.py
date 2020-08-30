@@ -264,6 +264,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import pearsonr
 import scipy.stats
+import datetime
 
 
 def calculate_pvalues(df):
@@ -349,16 +350,18 @@ All_final.describe().T
 
 
 # PLOT CORR
+# 'rides', 'RELIMP','Cumu_Cases_Rate', 'Cumu_Death_Rate',
 corr_matr = All_final[
-    ['Relative_Impact', 'rides', 'RELIMP', 'COMMERCIAL', 'INDUSTRIAL', 'INSTITUTIONAL', 'OPENSPACE', 'RESIDENTIAL',
-     'LUM', 'Cumu_Cases', 'Cumu_Death', 'Cumu_Cases_Rate', 'Cumu_Death_Rate', 'Pct.Male', 'Pct.Age_0_24',
+    ['Relative_Impact', 'COMMERCIAL', 'INDUSTRIAL', 'INSTITUTIONAL', 'OPENSPACE', 'RESIDENTIAL',
+     'LUM', 'Cumu_Cases', 'Cumu_Death', 'Pct.Male', 'Pct.Age_0_24',
      'Pct.Age_25_40', 'Pct.Age_40_65', 'Pct.White', 'Pct.Black', 'Income', 'College', 'Pct.WJob_Goods_Product',
      'Pct.WJob_Utilities', 'Pct.WJob_OtherServices', 'WTotal_Job_Density', 'PopDensity', 'Num_trips', 'Freq']]
 # corr_matr['Relative_Impact'] = -corr_matr['Relative_Impact']
-corr_matr.rename({'Relative_Impact': 'Relative Impact', 'rides': 'Ridership', 'RELIMP': 'Relative Decline',
+# 'rides': 'Ridership', 'RELIMP': 'Relative Decline','Cumu_Cases_Rate': 'Cases_Rate', 'Cumu_Death_Rate': 'Death_Rate',
+corr_matr.rename({'Relative_Impact': 'Relative Impact',
                   'COMMERCIAL': 'Commercial', 'INDUSTRIAL': 'Prop. Industrial', 'INSTITUTIONAL': 'Prop. Institutional',
                   'OPENSPACE': 'Prop. Open space', 'RESIDENTIAL': 'Prop. Residential', 'Cumu_Cases': 'Cases',
-                  'Cumu_Death': 'Death', 'Cumu_Cases_Rate': 'Cases_Rate', 'Cumu_Death_Rate': 'Death_Rate',
+                  'Cumu_Death': 'Death',
                   'Pct.Male': 'Prop. Male', 'Pct.Age_0_24': 'Prop. Age-0_24', 'Pct.Age_25_40': 'Prop. Age-25_40',
                   'Pct.Age_40_65': 'Prop. Age-40_65', 'Pct.White': 'Prop. Race-White', 'Pct.Black': 'Prop. Race-Black',
                   'Income': 'Median Income', 'College': 'Prop. College Degree',
