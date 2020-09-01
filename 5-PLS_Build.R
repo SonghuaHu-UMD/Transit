@@ -11,35 +11,21 @@ library(MASS)
 library(glmnet)
 library(mdatools)
 library(pls)
+library(margins)
+
 
 # Read data
 #dat <- read.csv('D:/Transit/All_final_Transit_R_0810.csv')
 #dat <- read.csv('D:/Transit/All_final_Transit_R_0812.csv')
 dat <- read.csv('D:/Transit/All_final_Transit_R_0822.csv')
 dat$rides <- round(dat$rides)
+#dat$Income <- dat$Income / 1e3
 
 vif_test <-
-  lm(rides ~ COMMERCIAL + # rides
-    INDUSTRIAL +
-    INSTITUTIONAL +
-    OPENSPACE +
-    RESIDENTIAL +
-    Cumu_Cases +
-    Pct.Male +
-    Pct.Age_0_24 +
-    Pct.Age_25_40 +
-    Pct.Age_40_65 +
-    Pct.White +
-    Pct.Black +
-    Income +
-    PopDensity +
-    College +
-    Freq +
-    Num_trips +
-    Pct.WJob_Utilities +
-    Pct.WJob_Goods_Product +
-    WTotal_Job_Density,
-     data = dat
+  lm(Relative_Impact ~ COMMERCIAL + INDUSTRIAL + INSTITUTIONAL + OPENSPACE + RESIDENTIAL +
+    Cumu_Cases + Pct.Male + Pct.Age_0_24 + Pct.Age_25_40 + Pct.Age_40_65 +
+    Pct.White + Pct.Black + Income + PopDensity + College + Freq +
+    Num_trips + Pct.WJob_Utilities + Pct.WJob_Goods_Product + WTotal_Job_Density, data = dat
   )
 vif(vif_test)
 summary(vif_test)
@@ -55,9 +41,12 @@ x <- dat %>%
 ## For impact
 y <- dat$Relative_Impact
 # Find optimal ncomp
-PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", method = "oscorespls", scale = T) # method = "oscorespls",
 summary(PLSR_)
-loading.weights(PLSR_)
+df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:10, intercept = TRUE))
+#loading.weights(PLSR_) # how strongly each component in the PCR depends on the original variables.
+PLSR_$loadings
+PLSR_$loading.weights
 png('Figure/NCOM-1.png', units = "in", width = 5, height = 5, res = 600)
 ncomp.onesigma <- selectNcomp(PLSR_, method = "onesigma", plot = TRUE)
 dev.off()
@@ -67,21 +56,26 @@ dev.off()
 #ggsave("1-NOCOM.png", units = "in", width = 3.1, height = 3, dpi = 600)
 
 # Check model
-plot(PLSR_, ncomp = 4, asp = 1, line = TRUE)
-plot(PLSR_, plottype = "scores", comps = 1:6)
-plot(PLSR_, "loadings", comps = 1:6, legendpos = "topleft")
+plot(PLSR_, ncomp = 10, asp = 1, line = TRUE)
+plot(PLSR_, plottype = "scores", comps = 1:10)
+plot(PLSR_, "loadings", comps = 1:3, legendpos = "topleft")
 explvar(PLSR_)
-plot(PLSR_, plottype = "coef", ncomp = 1:6, legendpos = "bottomleft")
+plot(PLSR_, plottype = "coef", ncomp = 1, legendpos = "bottomleft")
 plot(PLSR_, plottype = "correlation")
-df_coef <- as.data.frame(coef(PLSR_, ncomp = 1:6, intercept = TRUE))
+
 # Calculate p-value
-m <- pls(x, y, 4, cv = 10, scale = T)
+m <- pls(x, y, 10, cv = 5, scale = T)
+plotRegcoeffs(m)
+m$coeffs$values
 summary(m)
 summary(m$coeffs)
+m$xloadings
+m$weights
+#show(getRegcoeffs(m, ncomp = 1))
 
 ## For ride
 y <- dat$rides
-PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = F) # method = "oscorespls",
+PLSR_ <- plsr(y ~ x, ncomp = 10, data = dat, validation = "LOO", scale = T) # method = "oscorespls",
 summary(PLSR_)
 loading.weights(PLSR_)
 png('Figure/NCOM-2.png', units = "in", width = 5, height = 5, res = 600)
