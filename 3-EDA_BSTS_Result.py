@@ -341,3 +341,21 @@ for ax0 in ax:
     ax0.axes.yaxis.set_visible(False)
 plt.tight_layout()
 plt.subplots_adjust(top=0.987, bottom=0.087, left=0.022, right=0.987, hspace=0.078, wspace=0.09)
+
+Results_All_Res = pd.read_csv(r"C:\\Users\\huson\\PycharmProjects\\Transit\\finalMatrix_Transit_1030_1.csv")
+Results_All_Res['MAPE'] = abs((Results_All_Res['truth'] - Results_All_Res['pred']) / (Results_All_Res['truth']))
+Results_All_Res = Results_All_Res.replace([np.inf, -np.inf], np.nan)
+
+plt.rcParams.update({'font.size': 24, 'font.family': "Times New Roman"})
+fig, ax = plt.subplots(figsize=(14, 6))
+Results_All_Re1 = Results_All_Res[Results_All_Res['MAPE'] < 1]
+sns.boxplot(x="CTNAME", y="MAPE", data=Results_All_Re1, palette=sns.color_palette("GnBu_d"), showfliers=False, ax=ax,
+            linewidth=1)
+ax.tick_params(labelbottom=False)
+ax.set_xlabel('Transit Station')
+# ax.set_ylim([0, 0.15])
+plt.tight_layout()
+plt.savefig('Fig-MAPE-1.png', dpi=600)
+Results_All_Re1.describe()
+
+Results_All_Re1.groupby(['CTNAME']).mean()['MAPE'].describe()
