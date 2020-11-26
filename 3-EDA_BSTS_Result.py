@@ -41,6 +41,28 @@ for jj in set(Results_All['CTNAME']):
         Temp_time.loc[Temp_time['Component'] == 'Trend', 'Value']), color='#2f4c58', alpha=0.7, lw=2)
     ax.set_ylabel('Trend')
 
+# Plot prediction for 2019
+Results_All_2019 = pd.read_csv(r'finalMatrix_Transit_2019.csv', index_col=0)
+Results_All_2019['Date'] = pd.to_datetime(Results_All_2019['Date'])
+for jj in set(Results_All_2019['CTNAME']):
+    print(jj)
+    # jj = 40890
+    myFmt = mdates.DateFormatter('%Y')
+    Temp_time = Results_All_2019[Results_All_2019['CTNAME'] == jj]
+    Temp_time = Temp_time[Temp_time['Date'] >= '2019-01-01']
+    Temp_time.set_index('Date', inplace=True)
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(15, 6), sharex=True)  # 12,9.5
+    ax.plot(Temp_time.loc[Temp_time['Component'] == 'Response', 'Value'], color='#2f4c58', alpha=0.7, lw=1)
+    ax.plot(Temp_time.loc[Temp_time['Component'] == 'Predict', 'Value'], '--', color='#62760c', alpha=0.7, lw=1)
+    ax.fill_between(Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'].index,
+                    Temp_time.loc[Temp_time['Component'] == 'Predict_Lower', 'Value'],
+                    Temp_time.loc[Temp_time['Component'] == 'Predict_Upper', 'Value'], facecolor='#96bb7c',
+                    alpha=0.5)
+    ax.set_ylabel('Prediction')
+    plt.tight_layout()
+    plt.savefig(r'D:\Transit\2019 Predict\2019_Time_Range_' + str(jj) + 'png', dpi=500)
+    plt.close()
+
 for jj in set(Results_All['CTNAME']):
     print(jj)
     # jj = 40930
@@ -344,6 +366,7 @@ plt.subplots_adjust(top=0.987, bottom=0.087, left=0.022, right=0.987, hspace=0.0
 
 Results_All_Res = pd.read_csv(r"C:\\Users\\huson\\PycharmProjects\\Transit\\finalMatrix_Transit_1030_1.csv")
 Results_All_Res['MAPE'] = abs((Results_All_Res['truth'] - Results_All_Res['pred']) / (Results_All_Res['truth']))
+Results_All_Res['Diff'] = abs((Results_All_Res['truth'] - Results_All_Res['pred']))
 Results_All_Res = Results_All_Res.replace([np.inf, -np.inf], np.nan)
 
 plt.rcParams.update({'font.size': 24, 'font.family': "Times New Roman"})
@@ -358,4 +381,26 @@ plt.tight_layout()
 plt.savefig('Fig-MAPE-1.png', dpi=600)
 Results_All_Re1.describe()
 
-Results_All_Re1.groupby(['CTNAME']).mean()['MAPE'].describe()
+# Mean
+Mean_MAPE = Results_All_Re1.groupby(['CTNAME']).mean()['MAPE'].reset_index()
+Mean_MAPE = Mean_MAPE.sort_values(by='MAPE')
+Mean_MAPE[Mean_MAPE < 0.15].describe()
+
+Mean_Diff = Results_All_Re1.groupby(['CTNAME']).mean()['Diff'].reset_index()
+Mean_Diff = Mean_Diff.sort_values(by='Diff')
+Mean_Diff[Mean_Diff < 1000].describe()
+Mean_Diff.describe()
+
+
+# Median
+Median_MAPE = Results_All_Re1.groupby(['CTNAME']).median()['MAPE'].reset_index()
+Median_MAPE = Median_MAPE.sort_values(by='MAPE')
+Median_MAPE[Median_MAPE < 0.15].describe()
+
+# Plot
+Results_All_Res = Results_All_Res.sort_values(by=['CTNAME', 'date']).reset_index(drop=True)
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.plot(Results_All_Res.loc[Results_All_Res['CTNAME'] == 40350, 'date'],
+        Results_All_Res.loc[Results_All_Res['CTNAME'] == 40350, 'pred'])
+ax.plot(Results_All_Res.loc[Results_All_Res['CTNAME'] == 40350, 'date'],
+        Results_All_Res.loc[Results_All_Res['CTNAME'] == 40350, 'truth'])
