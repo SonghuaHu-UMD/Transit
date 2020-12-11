@@ -124,6 +124,7 @@ GAM_RES1 <-
             data = dat, family = c("gaussian"), method = "REML")
 summary(GAM_RES1)
 
+lambdas <- 10^seq(5, -5, by = -.1)
 ## For rides
 y <- dat$rides
 # RIDGE
