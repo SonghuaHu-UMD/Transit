@@ -1,16 +1,17 @@
-# Who's Left Riding Transit During COVID-19? A Joint Modeling Using Bayesian Structural Time-Series and Partial Least Squares Regression
-### Songhua Hu, Peng Chen 
+# Who left riding transit? Examining socioeconomic disparities in the impact of COVID-19 on ridership
+
+![F1](Figure/Fig-3.png "results")
+
+#### Songhua Hu, Peng Chen 
+The COVID-19 pandemic has led to a globally unprecedented decline in transit ridership. 
+This paper leveraged the 20-years daily transit ridership data in Chicago to infer the impact of COVID-19 on ridership using the Bayesian structural time series model, 
+controlling confounding effects of trend, seasonality, holiday, and weather. 
+A partial least square regression was then employed to examine the relationships between the impact of ridership and various explanatory factors.
+
 
 ## Data
-### Data from 2001
-* Daily_Lstaion_Final_0806.csv: Ridership+Weather, the input to build BSTS.
-* finalMatrix_Transit_0810.csv: Predict results from BSTS
-* finalCoeff_Transit_0810.csv: Coeff from BSTS
-* finalImpact_Transit_0810.csv: Causal Impact from BSTS [Describe impact based on this file]
-
-
-### Data from 2015
 * Daily_Lstaion_Final.csv: Ridership+Weather, the input to build BSTS.
+* finalCoeff_Transit_0810.csv: Coeff from BSTS
 * finalImpact_Transit_0810_old.csv: Causal Impact from BSTS [Describe p-value of impact based on this file]
 * Impact_Sta.csv: impact of each station
 * All_final_Transit_R_0812.csv: features to build PLS
@@ -23,3 +24,9 @@
 * 4-Feature_Build.py: Build the features matrix for PLS models.
 * 5-PLS_Build.R: Finish the PLS model fit.
 
+## Results
+#### Decomposition of one transit station ridership time series in the BSTS model.
+![F1](Figure/FIG2-1.png "results")
+
+#### Spatial distribution of the relative impact during the COVID-19 pandemic.
+![F1](Figure/PICKUP-2.png "results")
