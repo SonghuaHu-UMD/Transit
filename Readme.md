@@ -15,6 +15,7 @@ A partial least square regression was then employed to examine the relationships
 * finalImpact_Transit_0810_old.csv: Causal Impact from BSTS [Describe p-value of impact based on this file]
 * Impact_Sta.csv: impact of each station
 * All_final_Transit_R_0812.csv: features to build PLS
+* Other data are available at: https://drive.google.com/drive/folders/1OxtPze9qI-tNz3VLw5-7hvPf4y-M3J_g?usp=sharing
 
 
 ## Code
